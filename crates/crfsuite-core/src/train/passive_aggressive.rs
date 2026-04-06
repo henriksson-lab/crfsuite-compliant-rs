@@ -6,7 +6,7 @@ use crate::train::LogFn;
 pub fn train_passive_aggressive(
     encoder: &mut Crf1dEncoder,
     instances: &mut [crate::types::Instance],
-    pa_type: i32,    // 0=PA, 1=PA-I, 2=PA-II
+    pa_type: i32,
     c: f64,
     error_sensitive: bool,
     averaging: bool,
@@ -19,6 +19,11 @@ pub fn train_passive_aggressive(
     let mut w = vec![0.0f64; k];
     let mut ws = vec![0.0f64; k];
     let mut u = 1u64;
+
+    let max_t = instances.iter().map(|i| i.num_items()).max().unwrap_or(0);
+    let mut pred = vec![0i32; max_t];
+    let mut delta = vec![0.0f64; k];
+    let mut active_indices: Vec<usize> = Vec::with_capacity(k / 4);
 
     for epoch in 1..=max_iterations {
         for i in 0..n {
@@ -33,11 +38,10 @@ pub fn train_passive_aggressive(
             encoder.set_instance(inst);
 
             let t_max = inst.num_items();
-            let mut pred = vec![0i32; t_max];
-            let sv = encoder.viterbi(&mut pred);
+            let sv = encoder.viterbi(&mut pred[..t_max]);
 
-            if pred != inst.labels {
-                let d = pred.iter().zip(inst.labels.iter())
+            if pred[..t_max] != inst.labels[..] {
+                let d = pred[..t_max].iter().zip(inst.labels.iter())
                     .filter(|(p, g)| p != g).count() as f64;
 
                 let sc = encoder.score(&inst.labels);
@@ -47,33 +51,40 @@ pub fn train_passive_aggressive(
                     (sv - sc) + 1.0
                 };
 
-                // Compute delta = F(y) - F(y_pred)
-                let mut delta = vec![0.0f64; k];
+                active_indices.clear();
                 encoder.features_on_path(inst, &inst.labels, |fid, val| {
-                    delta[fid as usize] += val;
+                    let idx = fid as usize;
+                    if delta[idx] == 0.0 { active_indices.push(idx); }
+                    delta[idx] += val;
                 });
-                encoder.features_on_path(inst, &pred, |fid, val| {
-                    delta[fid as usize] -= val;
+                encoder.features_on_path(inst, &pred[..t_max], |fid, val| {
+                    let idx = fid as usize;
+                    if delta[idx] == 0.0 { active_indices.push(idx); }
+                    delta[idx] -= val;
                 });
 
-                let norm2: f64 = delta.iter().map(|x| x * x).sum();
+                let norm2: f64 = active_indices.iter().map(|&i| delta[i] * delta[i]).sum();
 
                 let tau = if norm2 == 0.0 {
                     0.0
                 } else {
                     match pa_type {
-                        1 => (cost / norm2).min(c),     // PA-I
-                        2 => cost / (norm2 + 0.5 / c),  // PA-II
-                        _ => cost / norm2,               // PA
+                        1 => (cost / norm2).min(c),
+                        2 => cost / (norm2 + 0.5 / c),
+                        _ => cost / norm2,
                     }
                 };
 
                 let tw = tau * inst.weight;
-                for i in 0..k {
+                for &i in &active_indices {
                     if delta[i] != 0.0 {
                         w[i] += tw * delta[i];
                         ws[i] += tw * u as f64 * delta[i];
                     }
+                }
+
+                for &i in &active_indices {
+                    delta[i] = 0.0;
                 }
 
                 sum_loss += cost * inst.weight;

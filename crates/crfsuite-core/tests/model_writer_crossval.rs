@@ -52,7 +52,7 @@ fn test_model_roundtrip() {
     // Check label refs point to transition features
     for lid in 0..2 {
         let refs = model.get_labelref(lid);
-        for &fid in &refs {
+        for &fid in refs {
             let f = model.get_feature(fid as u32).unwrap();
             assert_eq!(f.ftype, FT_TRANS as u32);
         }
@@ -61,7 +61,7 @@ fn test_model_roundtrip() {
     // Check attr refs point to state features
     for aid in 0..2 {
         let refs = model.get_attrref(aid);
-        for &fid in &refs {
+        for &fid in refs {
             let f = model.get_feature(fid as u32).unwrap();
             assert_eq!(f.ftype, FT_STATE as u32);
         }

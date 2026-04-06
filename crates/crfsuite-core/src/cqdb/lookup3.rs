@@ -169,10 +169,21 @@ pub fn hashlittle(key: &[u8], initval: u32) -> u32 {
 }
 
 /// Hash a string the way CQDB does: including the null terminator.
+/// Avoids allocation by computing on the string bytes + a trailing zero.
 pub fn hash_string(s: &str) -> u32 {
-    let mut bytes = s.as_bytes().to_vec();
-    bytes.push(0); // null terminator
-    hashlittle(&bytes, 0)
+    // Use a stack buffer for small strings (covers 99% of feature names)
+    let bytes = s.as_bytes();
+    let len = bytes.len() + 1; // include null terminator
+    if len <= 256 {
+        let mut buf = [0u8; 256];
+        buf[..bytes.len()].copy_from_slice(bytes);
+        // buf[bytes.len()] is already 0
+        hashlittle(&buf[..len], 0)
+    } else {
+        let mut v = bytes.to_vec();
+        v.push(0);
+        hashlittle(&v, 0)
+    }
 }
 
 #[cfg(test)]

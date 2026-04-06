@@ -39,7 +39,7 @@ impl<'a> Crf1dTagger<'a> {
         for i in 0..num_labels {
             let refs = model.get_labelref(i as i32);
             let trans_start = i * num_labels;
-            for &fid in &refs {
+            for &fid in refs {
                 if let Some(f) = model.get_feature(fid as u32) {
                     ctx.trans[trans_start + f.dst as usize] = f.weight;
                 }
@@ -59,7 +59,7 @@ impl<'a> Crf1dTagger<'a> {
                 if aid < 0 { continue; }
                 let refs = self.model.get_attrref(aid);
                 let value = attr.value;
-                for &fid in &refs {
+                for &fid in refs {
                     if let Some(f) = self.model.get_feature(fid as u32) {
                         self.ctx.state[state_start + f.dst as usize] += f.weight * value;
                     }

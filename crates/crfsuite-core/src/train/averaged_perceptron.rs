@@ -13,11 +13,13 @@ pub fn train_averaged_perceptron(
     let k = encoder.num_features;
     let n = instances.len();
     let mut w = vec![0.0f64; k];
-    let mut ws = vec![0.0f64; k]; // sum for averaging
+    let mut ws = vec![0.0f64; k];
     let mut c = 1u64;
 
+    let max_t = instances.iter().map(|i| i.num_items()).max().unwrap_or(0);
+    let mut pred = vec![0i32; max_t];
+
     for epoch in 1..=max_iterations {
-        // Shuffle
         for i in 0..n {
             let j = (unsafe { libc::rand() } as usize) % n;
             instances.swap(i, j);
@@ -30,25 +32,23 @@ pub fn train_averaged_perceptron(
             encoder.set_instance(inst);
 
             let t_max = inst.num_items();
-            let mut pred = vec![0i32; t_max];
-            encoder.viterbi(&mut pred);
+            encoder.viterbi(&mut pred[..t_max]);
 
-            if pred != inst.labels {
-                let d = pred.iter().zip(inst.labels.iter())
+            if pred[..t_max] != inst.labels[..] {
+                let d = pred[..t_max].iter().zip(inst.labels.iter())
                     .filter(|(p, g)| p != g).count();
 
-                // Update on correct path (+)
+                let cf = c as f64;
                 encoder.features_on_path(inst, &inst.labels, |fid, val| {
                     let v = inst.weight * val;
                     w[fid as usize] += v;
-                    ws[fid as usize] += c as f64 * v;
+                    ws[fid as usize] += cf * v;
                 });
 
-                // Update on predicted path (-)
-                encoder.features_on_path(inst, &pred, |fid, val| {
+                encoder.features_on_path(inst, &pred[..t_max], |fid, val| {
                     let v = inst.weight * val;
                     w[fid as usize] -= v;
-                    ws[fid as usize] -= c as f64 * v;
+                    ws[fid as usize] -= cf * v;
                 });
 
                 sum_loss += d as f64 / t_max as f64 * inst.weight;
@@ -65,7 +65,6 @@ pub fn train_averaged_perceptron(
         }
     }
 
-    // Compute averaged weights: wa = w - (1/c) * ws
     let inv_c = 1.0 / c as f64;
     for i in 0..k {
         w[i] -= inv_c * ws[i];

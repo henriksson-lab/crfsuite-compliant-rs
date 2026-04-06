@@ -16,15 +16,20 @@ pub struct Token {
     pub value: String,
 }
 
+/// Field parsed from a line: (attr, value) as owned Strings.
+/// We keep them in a Vec to avoid re-parsing.
+struct Field {
+    attr: String,
+    value: String,
+}
+
 /// IWA (Item With Attributes) format parser.
 /// Parses tab-separated fields from lines, with blank lines separating sequences.
 pub struct IwaReader<R: BufRead> {
     reader: R,
     line: String,
-    // Fields parsed from current line
-    fields: Vec<(String, String)>,
+    fields: Vec<Field>,
     field_idx: usize,
-    // State
     state: State,
 }
 
@@ -41,7 +46,7 @@ impl<R: BufRead> IwaReader<R> {
         IwaReader {
             reader,
             line: String::new(),
-            fields: Vec::new(),
+            fields: Vec::with_capacity(16),
             field_idx: 0,
             state: State::Start,
         }
@@ -52,145 +57,95 @@ impl<R: BufRead> IwaReader<R> {
         loop {
             match self.state {
                 State::Done => {
-                    return Token {
-                        token_type: TokenType::Eof,
-                        attr: String::new(),
-                        value: String::new(),
-                    };
+                    return Token { token_type: TokenType::Eof, attr: String::new(), value: String::new() };
                 }
                 State::Start | State::EndOfItem => {
-                    // Read next line
                     self.line.clear();
                     match self.reader.read_line(&mut self.line) {
                         Ok(0) => {
-                            // EOF
                             if self.state == State::EndOfItem {
                                 self.state = State::Done;
-                                return Token {
-                                    token_type: TokenType::None,
-                                    attr: String::new(),
-                                    value: String::new(),
-                                };
+                                return Token { token_type: TokenType::None, attr: String::new(), value: String::new() };
                             }
                             self.state = State::Done;
-                            return Token {
-                                token_type: TokenType::Eof,
-                                attr: String::new(),
-                                value: String::new(),
-                            };
+                            return Token { token_type: TokenType::Eof, attr: String::new(), value: String::new() };
                         }
                         Ok(_) => {
-                            let trimmed = self.line.trim_end_matches(|c| c == '\n' || c == '\r').to_owned();
-                            if trimmed.is_empty() {
-                                // Blank line = sequence separator
+                            let end = self.line.trim_end_matches(|c| c == '\n' || c == '\r').len();
+                            if end == 0 {
                                 if self.state == State::EndOfItem {
                                     self.state = State::Start;
-                                    return Token {
-                                        token_type: TokenType::None,
-                                        attr: String::new(),
-                                        value: String::new(),
-                                    };
+                                    return Token { token_type: TokenType::None, attr: String::new(), value: String::new() };
                                 }
-                                // Skip consecutive blank lines at start
                                 continue;
                             }
-                            // Parse fields from the line
-                            self.parse_line(&trimmed);
+                            self.parse_line(end);
                             self.field_idx = 0;
                             self.state = State::InItem;
-                            return Token {
-                                token_type: TokenType::Boi,
-                                attr: String::new(),
-                                value: String::new(),
-                            };
+                            return Token { token_type: TokenType::Boi, attr: String::new(), value: String::new() };
                         }
                         Err(_) => {
                             self.state = State::Done;
-                            return Token {
-                                token_type: TokenType::Eof,
-                                attr: String::new(),
-                                value: String::new(),
-                            };
+                            return Token { token_type: TokenType::Eof, attr: String::new(), value: String::new() };
                         }
                     }
                 }
                 State::InItem => {
                     if self.field_idx < self.fields.len() {
-                        let (attr, value) = self.fields[self.field_idx].clone();
+                        let f = &mut self.fields[self.field_idx];
                         self.field_idx += 1;
                         return Token {
                             token_type: TokenType::Item,
-                            attr,
-                            value,
+                            attr: std::mem::take(&mut f.attr),
+                            value: std::mem::take(&mut f.value),
                         };
                     } else {
-                        // All fields consumed
                         self.state = State::EndOfItem;
-                        return Token {
-                            token_type: TokenType::Eoi,
-                            attr: String::new(),
-                            value: String::new(),
-                        };
+                        return Token { token_type: TokenType::Eoi, attr: String::new(), value: String::new() };
                     }
                 }
             }
         }
     }
 
-    /// Parse a line into tab-separated fields. Each field is split at the first
-    /// unescaped colon into (attr, value). Supports \\ and \: escapes.
-    fn parse_line(&mut self, line: &str) {
+    fn parse_line(&mut self, end: usize) {
         self.fields.clear();
+        let line = &self.line[..end];
         for field in line.split('\t') {
-            if field.is_empty() {
-                continue;
-            }
+            if field.is_empty() { continue; }
             let (attr, value) = parse_field(field);
-            self.fields.push((attr, value));
+            self.fields.push(Field { attr, value });
         }
     }
 }
 
 /// Parse a single field into (attr, value) splitting at first unescaped colon.
-/// Handles \\ and \: escape sequences.
 fn parse_field(field: &str) -> (String, String) {
-    let mut attr = String::new();
-    let mut chars = field.chars().peekable();
-    let mut found_colon = false;
+    let bytes = field.as_bytes();
+    let len = bytes.len();
+    let mut i = 0;
+    let mut attr = String::with_capacity(len);
 
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            if let Some(&next) = chars.peek() {
-                match next {
-                    '\\' => {
-                        attr.push('\\');
-                        chars.next();
-                    }
-                    ':' => {
-                        attr.push(':');
-                        chars.next();
-                    }
-                    _ => {
-                        attr.push(c);
-                    }
-                }
-            } else {
-                attr.push(c);
+    while i < len {
+        let b = bytes[i];
+        if b == b'\\' && i + 1 < len {
+            let next = bytes[i + 1];
+            if next == b'\\' || next == b':' {
+                attr.push(next as char);
+                i += 2;
+                continue;
             }
-        } else if c == ':' {
-            found_colon = true;
-            break;
-        } else {
-            attr.push(c);
         }
+        if b == b':' {
+            // Found unescaped colon — rest is value
+            let value = String::from_utf8_lossy(&bytes[i + 1..]).into_owned();
+            return (attr, value);
+        }
+        attr.push(b as char);
+        i += 1;
     }
 
-    if found_colon {
-        let value: String = chars.collect();
-        (attr, value)
-    } else {
-        (attr, String::new())
-    }
+    (attr, String::new())
 }
 
 #[cfg(test)]

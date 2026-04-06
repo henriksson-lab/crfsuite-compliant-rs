@@ -20,7 +20,7 @@ pub struct TagArgs {
 }
 
 pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let mut fpo = io::stdout();
+    let mut fpo = io::BufWriter::new(io::stdout());
 
     let model_data = std::fs::read(&args.model_path)?;
     let model = ModelReader::open(&model_data).ok_or("Failed to open model")?;

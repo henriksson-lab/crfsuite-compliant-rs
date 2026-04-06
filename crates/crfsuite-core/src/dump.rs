@@ -44,7 +44,7 @@ pub fn dump_model(model: &ModelReader, out: &mut impl Write) -> std::io::Result<
     writeln!(out, "TRANSITIONS = {{")?;
     for i in 0..model.num_labels() {
         let refs = model.get_labelref(i as i32);
-        for &fid in &refs {
+        for &fid in refs {
             if let Some(f) = model.get_feature(fid as u32) {
                 let from = model.to_label(f.src as i32).unwrap_or("?");
                 let to = model.to_label(f.dst as i32).unwrap_or("?");
@@ -59,7 +59,7 @@ pub fn dump_model(model: &ModelReader, out: &mut impl Write) -> std::io::Result<
     writeln!(out, "STATE_FEATURES = {{")?;
     for i in 0..model.num_attrs() {
         let refs = model.get_attrref(i as i32);
-        for &fid in &refs {
+        for &fid in refs {
             if let Some(f) = model.get_feature(fid as u32) {
                 let attr = model.to_attr(f.src as i32).unwrap_or("?");
                 let to = model.to_label(f.dst as i32).unwrap_or("?");

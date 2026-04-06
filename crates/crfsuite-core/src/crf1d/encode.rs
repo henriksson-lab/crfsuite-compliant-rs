@@ -60,10 +60,12 @@ impl Crf1dEncoder {
 
     /// Set weights and compute transition scores.
     pub fn set_weights(&mut self, w: &[f64], scale: f64) {
-        self.weights = w.to_vec();
+        // Copy weights only if different length (reuse buffer)
+        self.weights.resize(w.len(), 0.0);
+        self.weights.copy_from_slice(w);
         self.scale = scale;
         self.ctx.reset(RF_TRANS);
-        self.transition_score(w, scale);
+        self.transition_score_from_stored();
     }
 
     /// Set an instance and compute state scores.
@@ -71,7 +73,37 @@ impl Crf1dEncoder {
         let t = inst.num_items();
         self.ctx.set_num_items(t);
         self.ctx.reset(RF_STATE);
-        self.state_score(inst, &self.weights.clone(), self.scale);
+        self.state_score_from_stored(inst);
+    }
+
+    fn transition_score_from_stored(&mut self) {
+        let l = self.num_labels;
+        let scale = self.scale;
+        for i in 0..l {
+            let trans_start = i * l;
+            for &fid in &self.label_refs[i].fids {
+                let f = &self.features[fid as usize];
+                self.ctx.trans[trans_start + f.dst as usize] = self.weights[fid as usize] * scale;
+            }
+        }
+    }
+
+    fn state_score_from_stored(&mut self, inst: &Instance) {
+        let l = self.num_labels;
+        let scale = self.scale;
+        for t in 0..inst.num_items() {
+            let item = &inst.items[t];
+            let state_start = t * l;
+            for attr in &item.contents {
+                let aid = attr.aid as usize;
+                if aid >= self.attr_refs.len() { continue; }
+                let value = attr.value;
+                for &fid in &self.attr_refs[aid].fids {
+                    let f = &self.features[fid as usize];
+                    self.ctx.state[state_start + f.dst as usize] += self.weights[fid as usize] * value * scale;
+                }
+            }
+        }
     }
 
     /// Compute state scores from feature weights for an instance.

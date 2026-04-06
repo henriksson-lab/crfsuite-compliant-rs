@@ -45,6 +45,11 @@ pub struct ModelReader<'a> {
     off_attrrefs: u32,
     labels: CqdbReader<'a>,
     attrs: CqdbReader<'a>,
+    // Precomputed feature refs (avoid per-call Vec allocation)
+    cached_labelrefs: Vec<Vec<i32>>,
+    cached_attrrefs: Vec<Vec<i32>>,
+    // Precomputed feature data (avoid per-call buffer reads)
+    cached_features: Vec<Feature>,
 }
 
 impl<'a> ModelReader<'a> {
@@ -76,7 +81,7 @@ impl<'a> ModelReader<'a> {
         let labels = CqdbReader::open(&buffer[off_labels as usize..])?;
         let attrs = CqdbReader::open(&buffer[off_attrs as usize..])?;
 
-        Some(ModelReader {
+        let mut reader = ModelReader {
             buffer,
             num_features,
             num_labels,
@@ -88,7 +93,33 @@ impl<'a> ModelReader<'a> {
             off_attrrefs,
             labels,
             attrs,
-        })
+            cached_labelrefs: Vec::new(),
+            cached_attrrefs: Vec::new(),
+            cached_features: Vec::new(),
+        };
+
+        // Precompute feature refs
+        reader.cached_labelrefs = (0..num_labels as i32)
+            .map(|lid| reader.read_featureref(off_labelrefs, lid))
+            .collect();
+        reader.cached_attrrefs = (0..num_attrs as i32)
+            .map(|aid| reader.read_featureref(off_attrrefs, aid))
+            .collect();
+
+        // Precompute all features
+        reader.cached_features = (0..num_features)
+            .map(|fid| {
+                let offset = off_features as usize + CHUNK_HEADER_SIZE + FEATURE_SIZE * fid as usize;
+                Feature {
+                    ftype: read_u32(buffer, offset),
+                    src: read_u32(buffer, offset + 4),
+                    dst: read_u32(buffer, offset + 8),
+                    weight: read_f64(buffer, offset + 12),
+                }
+            })
+            .collect();
+
+        Some(reader)
     }
 
     pub fn num_features(&self) -> u32 { self.num_features }
@@ -111,8 +142,14 @@ impl<'a> ModelReader<'a> {
         self.attrs.to_id(s)
     }
 
-    /// Get a feature by ID.
-    pub fn get_feature(&self, fid: u32) -> Option<Feature> {
+    /// Get a feature by ID (fast, from precomputed cache).
+    #[inline]
+    pub fn get_feature(&self, fid: u32) -> Option<&Feature> {
+        self.cached_features.get(fid as usize)
+    }
+
+    /// Get a feature by ID (from buffer, for compatibility).
+    pub fn get_feature_from_buffer(&self, fid: u32) -> Option<Feature> {
         let offset = self.off_features as usize + CHUNK_HEADER_SIZE + FEATURE_SIZE * fid as usize;
         if offset + FEATURE_SIZE > self.buffer.len() {
             return None;
@@ -126,16 +163,24 @@ impl<'a> ModelReader<'a> {
     }
 
     /// Get feature IDs associated with a label (transition features from this label).
-    pub fn get_labelref(&self, lid: i32) -> Vec<i32> {
-        self.get_featureref(self.off_labelrefs, lid)
+    pub fn get_labelref(&self, lid: i32) -> &[i32] {
+        if lid >= 0 && (lid as usize) < self.cached_labelrefs.len() {
+            &self.cached_labelrefs[lid as usize]
+        } else {
+            &[]
+        }
     }
 
     /// Get feature IDs associated with an attribute (state features for this attribute).
-    pub fn get_attrref(&self, aid: i32) -> Vec<i32> {
-        self.get_featureref(self.off_attrrefs, aid)
+    pub fn get_attrref(&self, aid: i32) -> &[i32] {
+        if aid >= 0 && (aid as usize) < self.cached_attrrefs.len() {
+            &self.cached_attrrefs[aid as usize]
+        } else {
+            &[]
+        }
     }
 
-    fn get_featureref(&self, chunk_offset: u32, index: i32) -> Vec<i32> {
+    fn read_featureref(&self, chunk_offset: u32, index: i32) -> Vec<i32> {
         let base = chunk_offset as usize;
         // Skip chunk header (12 bytes), then read offset at position `index`
         let offset_pos = base + CHUNK_HEADER_SIZE + 4 * index as usize;
@@ -230,7 +275,7 @@ mod tests {
         for aid in 0..model.num_attrs().min(5) as i32 {
             let refs = model.get_attrref(aid);
             assert!(!refs.is_empty(), "attr {} should have features", aid);
-            for &fid in &refs {
+            for &fid in refs {
                 let f = model.get_feature(fid as u32).unwrap();
                 assert_eq!(f.ftype, 0, "attr ref should point to state features");
                 assert_eq!(f.src, aid as u32, "state feature src should be the attribute");

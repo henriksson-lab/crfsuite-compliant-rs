@@ -15,7 +15,13 @@ pub fn train_arow(
     let k = encoder.num_features;
     let n = instances.len();
     let mut mean = vec![0.0f64; k];
-    let mut cov = vec![variance; k]; // diagonal covariance
+    let mut cov = vec![variance; k];
+
+    // Pre-allocate reusable buffers
+    let max_t = instances.iter().map(|i| i.num_items()).max().unwrap_or(0);
+    let mut pred = vec![0i32; max_t];
+    let mut delta = vec![0.0f64; k];
+    let mut active_indices: Vec<usize> = Vec::with_capacity(k / 4);
 
     for epoch in 1..=max_iterations {
         for i in 0..n {
@@ -30,40 +36,48 @@ pub fn train_arow(
             encoder.set_instance(inst);
 
             let t_max = inst.num_items();
-            let mut pred = vec![0i32; t_max];
-            let sv = encoder.viterbi(&mut pred);
+            let sv = encoder.viterbi(&mut pred[..t_max]);
 
-            if pred != inst.labels {
-                let d = pred.iter().zip(inst.labels.iter())
+            if pred[..t_max] != inst.labels[..] {
+                let d = pred[..t_max].iter().zip(inst.labels.iter())
                     .filter(|(p, g)| p != g).count() as f64;
 
                 let sc = encoder.score(&inst.labels);
                 let cost = (sv - sc) + d;
 
-                // Compute delta = F(y) - F(y_pred)
-                let mut delta = vec![0.0f64; k];
+                // Compute delta = F(y) - F(y_pred), track active indices
+                active_indices.clear();
                 encoder.features_on_path(inst, &inst.labels, |fid, val| {
-                    delta[fid as usize] += inst.weight * val;
+                    let idx = fid as usize;
+                    if delta[idx] == 0.0 { active_indices.push(idx); }
+                    delta[idx] += inst.weight * val;
                 });
-                encoder.features_on_path(inst, &pred, |fid, val| {
-                    delta[fid as usize] -= inst.weight * val;
+                encoder.features_on_path(inst, &pred[..t_max], |fid, val| {
+                    let idx = fid as usize;
+                    if delta[idx] == 0.0 { active_indices.push(idx); }
+                    delta[idx] -= inst.weight * val;
                 });
 
-                // Compute alpha = cost / (gamma + sum(delta[k]^2 * cov[k]))
+                // Compute alpha using only active features
                 let mut frac = gamma;
-                for i in 0..k {
+                for &i in &active_indices {
                     if delta[i] != 0.0 {
                         frac += delta[i] * delta[i] * cov[i];
                     }
                 }
                 let alpha = cost / frac;
 
-                // Update mean and covariance
-                for i in 0..k {
+                // Update mean and covariance (only active features)
+                for &i in &active_indices {
                     if delta[i] != 0.0 {
                         mean[i] += alpha * cov[i] * delta[i];
                         cov[i] = 1.0 / (1.0 / cov[i] + delta[i] * delta[i] / gamma);
                     }
+                }
+
+                // Clear delta (only active entries)
+                for &i in &active_indices {
+                    delta[i] = 0.0;
                 }
 
                 sum_loss += cost * inst.weight;
