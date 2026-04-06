@@ -1,0 +1,14 @@
+B-NP	w[0]=the	w[1]=cat	pos[0]=DT
+I-NP	w[-1]=the	w[0]=cat	w[1]=slept	pos[0]=NN
+B-VP	w[-1]=cat	w[0]=slept	w[1]=on	pos[0]=VBD
+B-PP	w[-1]=slept	w[0]=on	w[1]=a	pos[0]=IN
+B-NP	w[-1]=on	w[0]=a	w[1]=rug	pos[0]=DT
+I-NP	w[-1]=a	w[0]=rug	pos[0]=NN
+
+B-NP	w[0]=the	w[1]=bird	pos[0]=DT
+I-NP	w[-1]=the	w[0]=bird	w[1]=flew	pos[0]=NN
+B-VP	w[-1]=bird	w[0]=flew	w[1]=over	pos[0]=VBD
+B-PP	w[-1]=flew	w[0]=over	w[1]=the	pos[0]=IN
+B-NP	w[-1]=over	w[0]=the	w[1]=house	pos[0]=DT
+I-NP	w[-1]=the	w[0]=house	pos[0]=NN
+

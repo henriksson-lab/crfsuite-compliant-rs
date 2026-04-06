@@ -1,0 +1,20 @@
+B-NP	w[0]=the	w[1]=cat	pos[0]=DT
+I-NP	w[-1]=the	w[0]=cat	w[1]=sat	pos[0]=NN
+B-VP	w[-1]=cat	w[0]=sat	w[1]=on	pos[0]=VBD
+B-PP	w[-1]=sat	w[0]=on	w[1]=the	pos[0]=IN
+B-NP	w[-1]=on	w[0]=the	w[1]=mat	pos[0]=DT
+I-NP	w[-1]=the	w[0]=mat	pos[0]=NN
+
+B-NP	w[0]=a	w[1]=dog	pos[0]=DT
+I-NP	w[-1]=a	w[0]=dog	w[1]=ran	pos[0]=NN
+B-VP	w[-1]=dog	w[0]=ran	w[1]=in	pos[0]=VBD
+B-PP	w[-1]=ran	w[0]=in	w[1]=the	pos[0]=IN
+B-NP	w[-1]=in	w[0]=the	w[1]=park	pos[0]=DT
+I-NP	w[-1]=the	w[0]=park	pos[0]=NN
+
+B-NP	w[0]=the	w[1]=boy	pos[0]=DT
+I-NP	w[-1]=the	w[0]=boy	w[1]=kicked	pos[0]=NN
+B-VP	w[-1]=boy	w[0]=kicked	w[1]=the	pos[0]=VBD
+B-NP	w[-1]=kicked	w[0]=the	w[1]=ball	pos[0]=DT
+I-NP	w[-1]=the	w[0]=ball	pos[0]=NN
+

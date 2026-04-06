@@ -1,0 +1,10 @@
+B-NP	w[0]=the	w[1]=cat	pos[0]=DT
+I-NP	w[-1]=the	w[0]=cat	pos[0]=NN
+
+B-VP	w[0]=sat	pos[0]=VBD
+
+B-NP	w[0]=a	w[1]=dog	pos[0]=DT
+I-NP	w[-1]=a	w[0]=dog	w[1]=ran	pos[0]=NN
+B-VP	w[-1]=dog	w[0]=ran	pos[0]=VBD
+B-PP	w[-1]=ran	w[0]=in	pos[0]=IN
+

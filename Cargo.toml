@@ -8,6 +8,7 @@ repository = "https://github.com/henriksson-lab/crfsuite-compliant-rs"
 keywords = ["crf", "conditional-random-fields", "machine-learning", "nlp", "sequence-labeling"]
 categories = ["science", "text-processing", "algorithms"]
 exclude = [
+    ".claude/",
     "crfsuite/",
     "bench.sh",
     "bench_compare.sh",
@@ -17,7 +18,8 @@ exclude = [
     "test_data/gen_bench_data.py",
     "test_data/model_ap.bin",
     "test_data/model_arow.bin",
-    "test_data/model_c_*.bin",
+    "test_data/model_c_arow.bin",
+    "test_data/model_c_l2sgd.bin",
     "test_data/model_l2sgd.bin",
     "test_data/model_pa.bin",
     "test_data/model_rs.bin",

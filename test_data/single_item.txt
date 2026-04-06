@@ -1,0 +1,2 @@
+B-NP	w[0]=the	pos[0]=DT
+
