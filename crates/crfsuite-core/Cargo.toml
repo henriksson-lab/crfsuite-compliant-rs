@@ -1,0 +1,16 @@
+[package]
+name = "crfsuite-core"
+version = "0.1.0"
+edition = "2021"
+description = "Pure Rust implementation of CRFsuite"
+
+[build-dependencies]
+cc = "1"
+
+[dependencies]
+libc = "0.2"
+liblbfgs-sys = "0.1.3"
+
+[dev-dependencies]
+crfsuite-sys = { path = "../crfsuite-sys" }
+libc = "0.2"

@@ -8,8 +8,18 @@ description = "Rust CLI for CRFsuite"
 name = "crfsuite-rs"
 path = "src/main.rs"
 
+[features]
+default = ["pure-rust"]
+pure-rust-dump = ["crfsuite-core"]
+pure-rust-tag = ["crfsuite-core"]
+pure-rust-train = ["crfsuite-core"]
+pure-rust = ["pure-rust-dump", "pure-rust-tag", "pure-rust-train"]
+# Enable FFI fallback (for comparison/testing)
+ffi = ["crfsuite-ffi", "crfsuite-sys"]
+
 [dependencies]
-crfsuite-ffi = { path = "../crfsuite-ffi" }
-crfsuite-sys = { path = "../crfsuite-sys" }
+crfsuite-ffi = { path = "../crfsuite-ffi", optional = true }
+crfsuite-sys = { path = "../crfsuite-sys", optional = true }
+crfsuite-core = { path = "../crfsuite-core", optional = true }
 clap = { version = "4", features = ["derive"] }
 libc = "0.2"

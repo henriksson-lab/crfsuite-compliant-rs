@@ -1,6 +1,7 @@
 mod dump;
 mod iwa;
 mod learn;
+#[cfg(feature = "ffi")]
 mod reader;
 mod tag;
 
