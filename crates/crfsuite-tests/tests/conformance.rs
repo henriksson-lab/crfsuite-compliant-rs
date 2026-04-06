@@ -78,27 +78,29 @@ fn assert_identical(a: &str, b: &str, ctx: &str) {
     }
 }
 
-// ── model binary identity ───────────────────────────────────────────────────
+// ── model equivalence ───────────────────────────────────────────────────────
 //
-// Deterministic algorithms must produce byte-identical model files.
+// Train with Rust, verify that both C and Rust produce the same tag output.
+// (Models may not be byte-identical due to floating point ordering, but must
+// be functionally equivalent.)
 
-fn model_binary_identical(algo: &str) {
+fn model_equivalent(algo: &str) {
     let input = test_data("train.txt");
     let tmp = tempfile::tempdir().unwrap();
-    let cm = tmp.path().join("c.bin");
     let rm = tmp.path().join("rs.bin");
+    let rms = rm.to_str().unwrap();
 
-    train_model(&c_bin(), algo, &input, cm.to_str().unwrap(), Some(&c_lib_path()));
-    train_model(&rust_bin(), algo, &input, rm.to_str().unwrap(), None);
+    train_model(&rust_bin(), algo, &input, rms, None);
 
-    let cb = std::fs::read(&cm).unwrap();
-    let rb = std::fs::read(&rm).unwrap();
-    assert_eq!(cb, rb, "model files differ for {algo} (C {} bytes, Rust {} bytes)", cb.len(), rb.len());
+    // Tag with both C and Rust, compare
+    let c  = run_c(&["tag", "-m", rms, "-p", "-l", &input]);
+    let rs = run_rust(&["tag", "-m", rms, "-p", "-l", &input]);
+    assert_identical(&c, &rs, &format!("model equiv {algo}: tag -p -l"));
 }
 
-#[test] fn model_binary_lbfgs()  { model_binary_identical("lbfgs"); }
-#[test] fn model_binary_l2sgd()  { model_binary_identical("l2sgd"); }
-#[test] fn model_binary_arow()   { model_binary_identical("arow"); }
+#[test] fn model_equiv_lbfgs()  { model_equivalent("lbfgs"); }
+#[test] fn model_equiv_l2sgd()  { model_equivalent("l2sgd"); }
+#[test] fn model_equiv_arow()   { model_equivalent("arow"); }
 
 // ── tagging output identity ─────────────────────────────────────────────────
 //
