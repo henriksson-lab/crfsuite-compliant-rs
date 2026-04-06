@@ -78,8 +78,7 @@ mod tests {
     use super::*;
 
     fn model_bytes() -> Vec<u8> {
-        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap().parent().unwrap().to_path_buf();
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         std::fs::read(root.join("test_data/model_c.bin")).expect("model_c.bin")
     }
 

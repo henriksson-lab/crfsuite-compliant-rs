@@ -1,4 +1,4 @@
-mod dump;
+mod cli_dump;
 mod iwa;
 mod learn;
 mod tag;
@@ -149,7 +149,7 @@ fn main() {
             quiet,
             input_file: file,
         }),
-        Commands::Dump { model } => dump::run_dump(dump::DumpArgs {
+        Commands::Dump { model } => cli_dump::run_dump(cli_dump::DumpArgs {
             model_path: model,
         }),
     };

@@ -1,13 +1,14 @@
 use std::fs::File;
 use std::io::{self, BufReader};
 
-use crfsuite_core::crf1d::encode::Crf1dEncoder;
-use crfsuite_core::quark::Quark;
-use crfsuite_core::train;
-use crfsuite_core::types::{Attribute, Item, Instance};
+use crfsuite_compliant_rs::crf1d::encode::Crf1dEncoder;
+use crfsuite_compliant_rs::quark::Quark;
+use crfsuite_compliant_rs::train;
+use crfsuite_compliant_rs::types::{Attribute, Item, Instance};
 
 use crate::iwa::{IwaReader, TokenType};
 
+#[allow(dead_code)]
 pub struct LearnArgs {
     pub model_type: String,
     pub algorithm: String,

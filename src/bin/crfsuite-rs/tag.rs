@@ -2,9 +2,9 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::time::Instant;
 
-use crfsuite_core::crf1d::tag::Crf1dTagger;
-use crfsuite_core::model::ModelReader;
-use crfsuite_core::types::{Attribute, Item, Instance};
+use crfsuite_compliant_rs::crf1d::tag::Crf1dTagger;
+use crfsuite_compliant_rs::model::ModelReader;
+use crfsuite_compliant_rs::types::{Attribute, Item, Instance};
 
 use crate::iwa::{IwaReader, TokenType};
 

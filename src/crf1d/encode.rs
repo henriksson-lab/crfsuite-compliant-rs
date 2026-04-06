@@ -3,7 +3,7 @@
 /// Connects features, context, and model writer for training algorithms.
 
 use crate::crf1d::context::{Crf1dContext, CTXF_MARGINALS, CTXF_VITERBI, RF_STATE, RF_TRANS};
-use crate::crf1d::feature::{self, Feature, FeatureRefs, FT_STATE, FT_TRANS};
+use crate::crf1d::feature::{self, Feature, FeatureRefs};
 use crate::model_writer;
 use crate::types::Instance;
 
@@ -17,6 +17,8 @@ pub struct Crf1dEncoder {
     pub ctx: Crf1dContext,
     weights: Vec<f64>,
     scale: f64,
+    // Precomputed feature dst for fast indexing (avoids struct field access in hot loops)
+    feature_dst: Vec<u32>,
 }
 
 impl Crf1dEncoder {
@@ -45,6 +47,9 @@ impl Crf1dEncoder {
         // Create CRF context
         let ctx = Crf1dContext::new(CTXF_MARGINALS | CTXF_VITERBI, num_labels, max_t);
 
+        // Precompute feature dst array
+        let feature_dst: Vec<u32> = features.iter().map(|f| f.dst as u32).collect();
+
         Crf1dEncoder {
             num_labels,
             num_attributes: num_attrs,
@@ -55,6 +60,7 @@ impl Crf1dEncoder {
             ctx,
             weights: Vec::new(),
             scale: 1.0,
+            feature_dst,
         }
     }
 
@@ -82,8 +88,8 @@ impl Crf1dEncoder {
         for i in 0..l {
             let trans_start = i * l;
             for &fid in &self.label_refs[i].fids {
-                let f = &self.features[fid as usize];
-                self.ctx.trans[trans_start + f.dst as usize] = self.weights[fid as usize] * scale;
+                let dst = self.feature_dst[fid as usize] as usize;
+                self.ctx.trans[trans_start + dst] = self.weights[fid as usize] * scale;
             }
         }
     }
@@ -99,8 +105,8 @@ impl Crf1dEncoder {
                 if aid >= self.attr_refs.len() { continue; }
                 let value = attr.value;
                 for &fid in &self.attr_refs[aid].fids {
-                    let f = &self.features[fid as usize];
-                    self.ctx.state[state_start + f.dst as usize] += self.weights[fid as usize] * value * scale;
+                    let dst = self.feature_dst[fid as usize] as usize;
+                    self.ctx.state[state_start + dst] += self.weights[fid as usize] * value * scale;
                 }
             }
         }
@@ -115,10 +121,10 @@ impl Crf1dEncoder {
             for attr in &item.contents {
                 let aid = attr.aid as usize;
                 if aid >= self.attr_refs.len() { continue; }
-                let value = attr.value;
+                let vs = attr.value * scale;
                 for &fid in &self.attr_refs[aid].fids {
-                    let f = &self.features[fid as usize];
-                    self.ctx.state[state_start + f.dst as usize] += w[fid as usize] * value * scale;
+                    let dst = self.feature_dst[fid as usize] as usize;
+                    self.ctx.state[state_start + dst] += w[fid as usize] * vs;
                 }
             }
         }
@@ -149,9 +155,10 @@ impl Crf1dEncoder {
                 let aid = attr.aid as usize;
                 if aid >= self.attr_refs.len() { continue; }
                 let value = attr.value;
+                let vw = value * weight;
                 for &fid in &self.attr_refs[aid].fids {
-                    let f = &self.features[fid as usize];
-                    g[fid as usize] += self.ctx.mexp_state[mexp_start + f.dst as usize] * value * weight;
+                    let dst = self.feature_dst[fid as usize] as usize;
+                    g[fid as usize] += self.ctx.mexp_state[mexp_start + dst] * vw;
                 }
             }
         }
@@ -160,8 +167,8 @@ impl Crf1dEncoder {
         for i in 0..l {
             let mexp_start = i * l;
             for &fid in &self.label_refs[i].fids {
-                let f = &self.features[fid as usize];
-                g[fid as usize] += self.ctx.mexp_trans[mexp_start + f.dst as usize] * weight;
+                let dst = self.feature_dst[fid as usize] as usize;
+                g[fid as usize] += self.ctx.mexp_trans[mexp_start + dst] * weight;
             }
         }
     }
@@ -236,7 +243,6 @@ impl Crf1dEncoder {
 
     /// Accumulate observation expectations (features on gold path).
     pub fn observation_expectation(&self, inst: &Instance, w: &mut [f64], scale: f64) {
-        let l = self.num_labels;
         let t_max = inst.num_items();
 
         for t in 0..t_max {

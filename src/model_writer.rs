@@ -61,7 +61,7 @@ pub fn write_model(
         }
     }
 
-    let active_features = j as usize;
+    let _active_features = j as usize;
     let active_attrs = b as usize;
 
     let mut buf: Vec<u8> = Vec::new();
@@ -124,9 +124,6 @@ pub fn write_model(
     // ── Label refs (LFRF) ───────────────────���───────────────────────────
     align4(&mut buf);
     let off_labelrefs = buf.len() as u32;
-    // The C code uses L+2 for the offset array size (to handle BOS/EOS)
-    // but only writes L entries. Let's match exactly.
-    let num_labelref_entries = num_labels; // The C code opens with L+2 but only puts L entries
     write_featureref_chunk(&mut buf, b"LFRF", label_refs, &fmap, num_labels);
 
     // ── Attr refs (AFRF) ────────────────────────────────────────────────

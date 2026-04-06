@@ -6,7 +6,6 @@
 
 use crate::crf1d::encode::Crf1dEncoder;
 use crate::train::LogFn;
-use crate::vecmath;
 
 pub fn train_l2sgd(
     encoder: &mut Crf1dEncoder,

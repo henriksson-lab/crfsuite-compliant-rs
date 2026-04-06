@@ -220,8 +220,7 @@ mod tests {
     use super::*;
 
     fn model_bytes() -> Vec<u8> {
-        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent().unwrap().parent().unwrap().to_path_buf();
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         std::fs::read(root.join("test_data/model_c.bin")).expect("model_c.bin not found")
     }
 
@@ -262,9 +261,7 @@ mod tests {
         let model = ModelReader::open(&data).unwrap();
         // Each label should have some transition features
         for lid in 0..model.num_labels() as i32 {
-            let refs = model.get_labelref(lid);
-            // At least some labels should have features
-            // (not all necessarily)
+            let _refs = model.get_labelref(lid);
         }
     }
 

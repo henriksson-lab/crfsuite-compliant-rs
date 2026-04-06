@@ -121,24 +121,6 @@ impl Crf1dContext {
     // ── Row accessors ───────────────────────────────────────────────────
 
     #[inline]
-    fn alpha(&self, t: usize) -> &[f64] {
-        let l = self.num_labels;
-        &self.alpha_score[t * l..(t + 1) * l]
-    }
-
-    #[inline]
-    fn alpha_mut(&mut self, t: usize) -> &mut [f64] {
-        let l = self.num_labels;
-        &mut self.alpha_score[t * l..(t + 1) * l]
-    }
-
-    #[inline]
-    fn beta(&self, t: usize) -> &[f64] {
-        let l = self.num_labels;
-        &self.beta_score[t * l..(t + 1) * l]
-    }
-
-    #[inline]
     fn beta_mut(&mut self, t: usize) -> &mut [f64] {
         let l = self.num_labels;
         &mut self.beta_score[t * l..(t + 1) * l]
@@ -163,12 +145,6 @@ impl Crf1dContext {
     }
 
     #[inline]
-    fn exp_state_row(&self, t: usize) -> &[f64] {
-        let l = self.num_labels;
-        &self.exp_state[t * l..(t + 1) * l]
-    }
-
-    #[inline]
     fn exp_trans_row(&self, i: usize) -> &[f64] {
         let l = self.num_labels;
         &self.exp_trans[i * l..(i + 1) * l]
@@ -190,42 +166,35 @@ impl Crf1dContext {
             for v in alpha_part.iter_mut() { *v *= s; }
         }
 
-        // t=1..T-1
+        // t=1..T-1: alpha[t][j] = exp_state[t][j] * sum_i(alpha[t-1][i] * exp_trans[i][j])
         for t in 1..t_max {
-            // cur = alpha[t], prev = alpha[t-1], state = exp_state[t]
-            // cur[j] = exp_state[t][j] * sum_i(alpha[t-1][i] * exp_trans[i][j])
-            //
-            // We need to read alpha[t-1] and write alpha[t] simultaneously.
-            // Since they don't overlap (different rows), we can use index arithmetic.
             let prev_start = (t - 1) * l;
             let cur_start = t * l;
 
-            // Zero cur
-            for j in 0..l {
-                self.alpha_score[cur_start + j] = 0.0;
-            }
+            // cur = 0
+            self.alpha_score[cur_start..cur_start + l].fill(0.0);
 
+            // cur += alpha[t-1][i] * exp_trans[i][*]  (matrix-vector product)
             for i in 0..l {
                 let prev_i = self.alpha_score[prev_start + i];
-                let trans_start = i * l;
-                for j in 0..l {
-                    self.alpha_score[cur_start + j] += prev_i * self.exp_trans[trans_start + j];
-                }
+                let trans = &self.exp_trans[i * l..(i + 1) * l];
+                let cur = &mut self.alpha_score[cur_start..cur_start + l];
+                vecaadd(cur, prev_i, trans);
             }
 
-            // Multiply by exp_state[t]
-            let state_row = &self.exp_state[cur_start..cur_start + l];
-            for j in 0..l {
-                self.alpha_score[cur_start + j] *= state_row[j];
+            // cur *= exp_state[t]
+            {
+                let (left, right) = self.alpha_score.split_at_mut(cur_start);
+                let _ = left; // unused
+                let cur = &mut right[..l];
+                vecmul(cur, &self.exp_state[cur_start..cur_start + l]);
             }
 
             // Scale
             let sum: f64 = self.alpha_score[cur_start..cur_start + l].iter().sum();
             self.scale_factor[t] = if sum != 0.0 { 1.0 / sum } else { 1.0 };
             let s = self.scale_factor[t];
-            for j in 0..l {
-                self.alpha_score[cur_start + j] *= s;
-            }
+            vecscale(&mut self.alpha_score[cur_start..cur_start + l], s);
         }
 
         // log_norm = -sum(log(scale_factor[t]))
@@ -336,7 +305,6 @@ impl Crf1dContext {
     // ── Score a path (log domain) ───────────────────────────────────────
 
     pub fn score(&self, labels: &[i32]) -> f64 {
-        let l = self.num_labels;
         let t_max = self.num_items;
 
         let mut i = labels[0] as usize;
