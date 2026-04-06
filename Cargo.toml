@@ -5,7 +5,7 @@ edition = "2021"
 description = "Pure Rust implementation of CRFsuite (Conditional Random Fields) for labeling sequential data"
 license = "BSD-3-Clause"
 repository = "https://github.com/henriksson-lab/crfsuite-compliant-rs"
-keywords = ["crf", "conditional-random-fields", "machine-learning", "nlp", "sequence-labeling"]
+keywords = ["crf", "machine-learning", "nlp", "sequence-labeling"]
 categories = ["science", "text-processing", "algorithms"]
 exclude = [
     ".claude/",
