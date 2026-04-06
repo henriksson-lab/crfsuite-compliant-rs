@@ -38,7 +38,7 @@ impl<'a> Dataset<'a> {
     pub fn shuffle(&mut self) {
         let n = self.perm.len();
         for i in 0..n {
-            let j = (unsafe { libc::rand() } as usize) % n;
+            let j = crate::rng::rand_int() % n;
             self.perm.swap(i, j);
         }
     }

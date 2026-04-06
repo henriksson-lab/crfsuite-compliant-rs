@@ -1,4 +1,5 @@
 pub mod cqdb;
+mod rng;
 pub mod crf1d;
 pub mod dataset;
 pub mod dump;

@@ -25,7 +25,7 @@ pub fn train_arow(
 
     for epoch in 1..=max_iterations {
         for i in 0..n {
-            let j = (unsafe { libc::rand() } as usize) % n;
+            let j = crate::rng::rand_int() % n;
             instances.swap(i, j);
         }
 
