@@ -7,6 +7,15 @@ license = "BSD-3-Clause"
 repository = "https://github.com/henriksson-lab/crfsuite-rs"
 keywords = ["crf", "conditional-random-fields", "machine-learning", "nlp", "sequence-labeling"]
 categories = ["science", "text-processing", "algorithms"]
+exclude = [
+    "crfsuite/",
+    "bench.sh",
+    "bench_compare.sh",
+    "CLAUDE.md",
+    "test_data/bench_10k.txt",
+    "test_data/gen_bench_data.py",
+    "test_data/model_*.bin",
+]
 
 [lib]
 name = "crfsuite_compliant_rs"
