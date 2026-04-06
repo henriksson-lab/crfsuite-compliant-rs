@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "crates/crfsuite-sys",
+    "crates/crfsuite-ffi",
+    "crates/crfsuite-cli",
+    "crates/crfsuite-tests",
+]
+resolver = "2"
