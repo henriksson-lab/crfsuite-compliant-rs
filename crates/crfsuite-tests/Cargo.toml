@@ -1,0 +1,10 @@
+[package]
+name = "crfsuite-tests"
+version = "0.1.0"
+edition = "2021"
+description = "Conformance tests: Rust CLI vs original C CLI"
+
+[dev-dependencies]
+crfsuite-sys = { path = "../crfsuite-sys" }
+crfsuite-ffi = { path = "../crfsuite-ffi" }
+tempfile = "3"

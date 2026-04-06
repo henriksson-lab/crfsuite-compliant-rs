@@ -1,0 +1,12 @@
+[package]
+name = "crfsuite-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "Safe Rust wrappers around the CRFsuite C library"
+
+[build-dependencies]
+cc = "1"
+
+[dependencies]
+crfsuite-sys = { path = "../crfsuite-sys" }
+libc = "0.2"
