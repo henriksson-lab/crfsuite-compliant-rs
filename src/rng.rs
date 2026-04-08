@@ -1,7 +1,7 @@
-/// Simple deterministic RNG for dataset shuffling.
-/// Does not need to match C rand() — conformance tests verify
-/// model correctness via cross-tagging, not byte-identical models
-/// for algorithms that shuffle (AP, PA, AROW).
+//! Simple deterministic RNG for dataset shuffling.
+//! Does not need to match C rand() — conformance tests verify
+//! model correctness via cross-tagging, not byte-identical models
+//! for algorithms that shuffle (AP, PA, AROW).
 
 use std::cell::Cell;
 

@@ -71,7 +71,7 @@ impl<R: BufRead> IwaReader<R> {
                             return Token { token_type: TokenType::Eof, attr: String::new(), value: String::new() };
                         }
                         Ok(_) => {
-                            let end = self.line.trim_end_matches(|c| c == '\n' || c == '\r').len();
+                            let end = self.line.trim_end_matches(['\n', '\r']).len();
                             if end == 0 {
                                 if self.state == State::EndOfItem {
                                     self.state = State::Start;

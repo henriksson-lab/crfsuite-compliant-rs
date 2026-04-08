@@ -1,4 +1,4 @@
-/// Pure Rust data types for CRFsuite sequences.
+//! Pure Rust data types for CRFsuite sequences.
 
 #[derive(Debug, Clone)]
 pub struct Attribute {
@@ -17,6 +17,17 @@ pub struct Instance {
     pub labels: Vec<i32>,
     pub weight: f64,
     pub group: i32,
+}
+
+impl Default for Instance {
+    fn default() -> Self {
+        Instance {
+            items: Vec::new(),
+            labels: Vec::new(),
+            weight: 1.0,
+            group: 0,
+        }
+    }
 }
 
 impl Instance {

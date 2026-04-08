@@ -1,8 +1,8 @@
-/// L2-regularized Stochastic Gradient Descent (Pegasos-style).
-///
-/// Simplified implementation: uses batch gradient per epoch.
-/// For exact C parity, the per-instance decay/gain logic would need
-/// to be replicated exactly.
+//! L2-regularized Stochastic Gradient Descent (Pegasos-style).
+//!
+//! Simplified implementation: uses batch gradient per epoch.
+//! For exact C parity, the per-instance decay/gain logic would need
+//! to be replicated exactly.
 
 use crate::crf1d::encode::Crf1dEncoder;
 use crate::train::LogFn;
@@ -22,7 +22,7 @@ pub fn train_l2sgd(
 
     // Calibration: simple initial learning rate
     let eta0 = 0.1f64;
-    let t0 = (1.0 / (lambda * eta0)) as f64;
+    let t0 = 1.0 / (lambda * eta0);
 
     let mut w = vec![0.0f64; k];
     let mut g = vec![0.0f64; k];
@@ -54,11 +54,9 @@ pub fn train_l2sgd(
 
         if epoch % period == 0 {
             let improvement = (best_loss - loss) / loss.abs().max(1.0);
-            if loss < best_loss {
-                if improvement < delta {
-                    (log)("Converged.\n");
-                    break;
-                }
+            if loss < best_loss && improvement < delta {
+                (log)("Converged.\n");
+                break;
             }
             best_loss = best_loss.min(loss);
         }

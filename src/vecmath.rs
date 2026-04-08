@@ -1,7 +1,7 @@
-/// Vector math operations for CRFsuite.
-///
-/// `vecexp` reproduces the exact SSE2 polynomial approximation from the C code
-/// so that forward-backward scores are bit-identical.
+//! Vector math operations for CRFsuite.
+//!
+//! `vecexp` reproduces the exact SSE2 polynomial approximation from the C code
+//! so that forward-backward scores are bit-identical.
 
 #[inline]
 pub fn veczero(x: &mut [f64]) {
@@ -88,11 +88,11 @@ pub fn vecsumlog(x: &[f64]) -> f64 {
 
 // ── vecexp: exact reproduction of the C SSE2 polynomial ─────────────────────
 
-const LOG2E: f64 = 1.4426950408889634073599;
-const MAXLOG: f64 = 7.09782712893383996843e2;
-const MINLOG: f64 = -7.08396418532264106224e2;
+const LOG2E: f64 = std::f64::consts::LOG2_E;
+const MAXLOG: f64 = 7.097_827_128_933_84e2;
+const MINLOG: f64 = -7.083_964_185_322_641e2;
 const C1: f64 = 6.93145751953125e-1;
-const C2: f64 = 1.42860682030941723212e-6;
+const C2: f64 = 1.428_606_820_309_417_3e-6;
 
 const W11: f64 = 3.5524625185478232665958141148891055719216674475023e-8;
 const W10: f64 = 2.5535368519306500343384723775435166753084614063349e-7;
@@ -112,7 +112,7 @@ const W0: f64 = 0.99999999999999999566016490920259318691496540598896;
 #[inline]
 fn fast_exp(x: f64) -> f64 {
     // Clamp
-    let x = if x > MAXLOG { MAXLOG } else if x < MINLOG { MINLOG } else { x };
+    let x = x.clamp(MINLOG, MAXLOG);
 
     // a = x * log2(e)
     let a = x * LOG2E;
@@ -122,7 +122,7 @@ fn fast_exp(x: f64) -> f64 {
     let p = if a < 0.0 { 1.0 } else { 0.0 };
     let a = a - p;
     let k = a as i32; // truncate toward zero (same as _mm_cvttpd_epi32)
-    let p = k as f64;
+    let p = f64::from(k);
 
     // Cody-Waite reduction: x -= p * log(2)  split as (C1 + C2)
     let x = x - p * C1;

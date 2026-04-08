@@ -1,12 +1,13 @@
 [package]
 name = "crfsuite-compliant-rs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Pure Rust implementation of CRFsuite (Conditional Random Fields) for labeling sequential data"
 license = "BSD-3-Clause"
 repository = "https://github.com/henriksson-lab/crfsuite-compliant-rs"
 keywords = ["crf", "machine-learning", "nlp", "sequence-labeling"]
 categories = ["science", "text-processing", "algorithms"]
+rust-version = "1.79"
 exclude = [
     ".claude/",
     "crfsuite/",

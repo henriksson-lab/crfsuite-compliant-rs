@@ -48,7 +48,7 @@ pub fn dump_model(model: &ModelReader, out: &mut impl Write) -> std::io::Result<
             if let Some(f) = model.get_feature(fid as u32) {
                 let from = model.to_label(f.src as i32).unwrap_or("?");
                 let to = model.to_label(f.dst as i32).unwrap_or("?");
-                write!(out, "  ({}) {} --> {}: {:.6}\n", f.ftype, from, to, f.weight)?;
+                writeln!(out, "  ({}) {} --> {}: {:.6}", f.ftype, from, to, f.weight)?;
             }
         }
     }
@@ -63,7 +63,7 @@ pub fn dump_model(model: &ModelReader, out: &mut impl Write) -> std::io::Result<
             if let Some(f) = model.get_feature(fid as u32) {
                 let attr = model.to_attr(f.src as i32).unwrap_or("?");
                 let to = model.to_label(f.dst as i32).unwrap_or("?");
-                write!(out, "  ({}) {} --> {}: {:.6}\n", f.ftype, attr, to, f.weight)?;
+                writeln!(out, "  ({}) {} --> {}: {:.6}", f.ftype, attr, to, f.weight)?;
             }
         }
     }

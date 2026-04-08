@@ -1,6 +1,6 @@
-/// CRF1d encoder for training (replaces crf1d_encode.c).
-///
-/// Connects features, context, and model writer for training algorithms.
+//! CRF1d encoder for training (replaces crf1d_encode.c).
+//!
+//! Connects features, context, and model writer for training algorithms.
 
 use crate::crf1d::context::{Crf1dContext, CTXF_MARGINALS, CTXF_VITERBI, RF_STATE, RF_TRANS};
 use crate::crf1d::feature::{self, Feature, FeatureRefs};
@@ -186,6 +186,7 @@ impl Crf1dEncoder {
         let k = self.num_features;
 
         // Initialize gradients with negative observation expectations
+        #[allow(clippy::needless_range_loop)]
         for i in 0..k {
             g[i] = -self.features[i].freq;
         }

@@ -1,12 +1,12 @@
-/// CRF1d binary model reader (and later, writer).
-///
-/// Model file layout:
-///   [0..48]     Header (magic "lCRF", type "FOMC", version 100, counts, offsets)
-///   [off_features..]  Features chunk: "FEAT" header (12 bytes) + features (20 bytes each)
-///   [off_labels..]    Label CQDB chunk
-///   [off_attrs..]     Attribute CQDB chunk
-///   [off_labelrefs..] Label feature refs: "LFRF" header (12 bytes) + offset array + packed fid arrays
-///   [off_attrrefs..]  Attribute feature refs: "AFRF" header (12 bytes) + offset array + packed fid arrays
+//! CRF1d binary model reader (and later, writer).
+//!
+//! Model file layout:
+//!   [0..48]     Header (magic "lCRF", type "FOMC", version 100, counts, offsets)
+//!   [off_features..]  Features chunk: "FEAT" header (12 bytes) + features (20 bytes each)
+//!   [off_labels..]    Label CQDB chunk
+//!   [off_attrs..]     Attribute CQDB chunk
+//!   [off_labelrefs..] Label feature refs: "LFRF" header (12 bytes) + offset array + packed fid arrays
+//!   [off_attrrefs..]  Attribute feature refs: "AFRF" header (12 bytes) + offset array + packed fid arrays
 
 use crate::cqdb::CqdbReader;
 

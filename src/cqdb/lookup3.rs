@@ -1,9 +1,9 @@
-/// Bob Jenkins' lookup3 hash function (hashlittle).
-/// Produces identical output to the C implementation in lookup3.c.
+//! Bob Jenkins' lookup3 hash function (hashlittle).
+//! Produces identical output to the C implementation in lookup3.c.
 
 #[inline]
 fn rot(x: u32, k: u32) -> u32 {
-    (x << k) | (x >> (32 - k))
+    x.rotate_left(k)
 }
 
 macro_rules! mix {

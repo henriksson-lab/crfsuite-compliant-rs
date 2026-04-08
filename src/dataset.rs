@@ -1,4 +1,4 @@
-/// Dataset wrapper with permutation array for shuffling and train/test splits.
+//! Dataset wrapper with permutation array for shuffling and train/test splits.
 
 use crate::types::Instance;
 

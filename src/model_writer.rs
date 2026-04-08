@@ -1,4 +1,4 @@
-/// CRF1d binary model writer. Produces byte-identical files to the C implementation.
+//! CRF1d binary model writer. Produces byte-identical files to the C implementation.
 
 use crate::cqdb::CqdbWriter;
 use crate::crf1d::feature::{Feature, FeatureRefs, FT_STATE};
@@ -51,7 +51,7 @@ pub fn write_model(
         if *w != 0.0 {
             fmap[k] = j;
             j += 1;
-            if features[k].ftype == FT_STATE as i32 {
+            if features[k].ftype == FT_STATE {
                 let src = features[k].src as usize;
                 if src < num_attrs_orig && amap[src] < 0 {
                     amap[src] = b;
@@ -64,10 +64,7 @@ pub fn write_model(
     let _active_features = j as usize;
     let active_attrs = b as usize;
 
-    let mut buf: Vec<u8> = Vec::new();
-
-    // Reserve header space
-    buf.resize(HEADER_SIZE, 0);
+    let mut buf: Vec<u8> = vec![0; HEADER_SIZE];
 
     // ── Features chunk ─────────��────────────────────────────────────────
     let off_features = buf.len() as u32;
@@ -80,10 +77,10 @@ pub fn write_model(
     for (k, w) in weights.iter().enumerate() {
         if *w != 0.0 {
             let f = &features[k];
-            let src = if f.ftype == FT_STATE as i32 {
+            let src = if f.ftype == FT_STATE {
                 amap[f.src as usize]
             } else {
-                f.src as i32
+                f.src
             };
             write_u32(&mut buf, f.ftype as u32);
             write_u32(&mut buf, src as u32);

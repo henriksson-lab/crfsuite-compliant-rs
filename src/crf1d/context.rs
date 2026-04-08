@@ -1,8 +1,8 @@
-/// CRF1d context: forward-backward algorithm, Viterbi decoding, marginal computation.
-///
-/// Matrices use row-major `[t * L + l]` indexing where:
-///   t = time position (0..T)
-///   l = label index (0..L)
+//! CRF1d context: forward-backward algorithm, Viterbi decoding, marginal computation.
+//!
+//! Matrices use row-major `[t * L + l]` indexing where:
+//!   t = time position (0..T)
+//!   l = label index (0..L)
 
 use crate::vecmath::*;
 
@@ -13,31 +13,31 @@ pub const RF_STATE: i32 = 0x01;
 pub const RF_TRANS: i32 = 0x02;
 
 pub struct Crf1dContext {
-    pub flag: i32,
-    pub num_labels: usize,
-    pub num_items: usize,
+    pub(crate) flag: i32,
+    pub(crate) num_labels: usize,
+    pub(crate) num_items: usize,
     cap_items: usize,
 
     // Score matrices [T * L] or [L * L]
-    pub state: Vec<f64>,       // [T][L] state scores (log domain)
-    pub trans: Vec<f64>,       // [L][L] transition scores (log domain)
+    pub(crate) state: Vec<f64>,       // [T][L] state scores (log domain)
+    pub(crate) trans: Vec<f64>,       // [L][L] transition scores (log domain)
 
     // Forward-backward
-    pub alpha_score: Vec<f64>, // [T][L]
-    pub beta_score: Vec<f64>,  // [T][L]
-    pub scale_factor: Vec<f64>,// [T]
+    pub(crate) alpha_score: Vec<f64>, // [T][L]
+    pub(crate) beta_score: Vec<f64>,  // [T][L]
+    pub(crate) scale_factor: Vec<f64>,// [T]
     row: Vec<f64>,             // [L] scratch
 
     // Viterbi
-    pub backward_edge: Vec<i32>, // [T][L]
+    pub(crate) backward_edge: Vec<i32>, // [T][L]
 
     // Marginals (exponentiated)
-    pub exp_state: Vec<f64>,   // [T][L]
-    pub exp_trans: Vec<f64>,   // [L][L]
-    pub mexp_state: Vec<f64>,  // [T][L] model expectations
-    pub mexp_trans: Vec<f64>,  // [L][L] model expectations
+    pub(crate) exp_state: Vec<f64>,   // [T][L]
+    pub(crate) exp_trans: Vec<f64>,   // [L][L]
+    pub(crate) mexp_state: Vec<f64>,  // [T][L] model expectations
+    pub(crate) mexp_trans: Vec<f64>,  // [L][L] model expectations
 
-    pub log_norm: f64,
+    pub(crate) log_norm: f64,
 }
 
 impl Crf1dContext {
@@ -228,6 +228,7 @@ impl Crf1dContext {
             for i in 0..l {
                 let trans_row = self.exp_trans_row(i);
                 let mut dot = 0.0f64;
+                #[allow(clippy::needless_range_loop)]
                 for j in 0..l {
                     dot += trans_row[j] * self.row[j];
                 }
@@ -311,6 +312,7 @@ impl Crf1dContext {
         let state0 = self.state_score(0);
         let mut ret = state0[i];
 
+        #[allow(clippy::needless_range_loop)]
         for t in 1..t_max {
             let j = labels[t] as usize;
             let trans_row = self.trans_score(i);

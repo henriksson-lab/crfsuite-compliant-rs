@@ -1,7 +1,7 @@
-/// Feature extraction for CRF1d training (replaces crf1d_feature.c).
-///
-/// Features are (type, src, dst) tuples with accumulated frequencies.
-/// Uses BTreeMap for deterministic ordering (same lexicographic order as C's rumavl).
+//! Feature extraction for CRF1d training (replaces crf1d_feature.c).
+//!
+//! Features are (type, src, dst) tuples with accumulated frequencies.
+//! Uses BTreeMap for deterministic ordering (same lexicographic order as C's rumavl).
 
 use std::collections::BTreeMap;
 

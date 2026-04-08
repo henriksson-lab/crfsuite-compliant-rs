@@ -1,8 +1,9 @@
-/// Passive-Aggressive training (PA, PA-I, PA-II variants).
+//! Passive-Aggressive training (PA, PA-I, PA-II variants).
 
 use crate::crf1d::encode::Crf1dEncoder;
 use crate::train::LogFn;
 
+#[allow(clippy::too_many_arguments)]
 pub fn train_passive_aggressive(
     encoder: &mut Crf1dEncoder,
     instances: &mut [crate::types::Instance],

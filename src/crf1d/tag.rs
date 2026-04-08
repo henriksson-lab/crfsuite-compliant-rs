@@ -1,6 +1,6 @@
-/// Pure Rust CRF1d tagger — replaces crf1d_tag.c
-///
-/// Given a ModelReader, creates a tagger that can tag sequences.
+//! Pure Rust CRF1d tagger — replaces crf1d_tag.c
+//!
+//! Given a ModelReader, creates a tagger that can tag sequences.
 
 use crate::crf1d::context::{Crf1dContext, CTXF_MARGINALS, CTXF_VITERBI, RF_STATE};
 use crate::model::ModelReader;

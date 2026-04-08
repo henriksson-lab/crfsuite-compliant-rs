@@ -1,4 +1,4 @@
-/// Averaged Perceptron training.
+//! Averaged Perceptron training.
 
 use crate::crf1d::encode::Crf1dEncoder;
 use crate::train::LogFn;

@@ -1,4 +1,4 @@
-/// AROW (Adaptive Regularization of Weights) training.
+//! AROW (Adaptive Regularization of Weights) training.
 
 use crate::crf1d::encode::Crf1dEncoder;
 use crate::train::LogFn;

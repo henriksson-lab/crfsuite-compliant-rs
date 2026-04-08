@@ -1,9 +1,10 @@
-/// String-to-sequential-ID mapping (replaces C quark.c + rumavl.c).
-///
-/// IDs are assigned sequentially starting from 0 in insertion order.
+//! String-to-sequential-ID mapping (replaces C quark.c + rumavl.c).
+//!
+//! IDs are assigned sequentially starting from 0 in insertion order.
 
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct Quark {
     string_to_id: HashMap<String, i32>,
     id_to_string: Vec<String>,

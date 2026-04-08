@@ -1,11 +1,12 @@
-/// L-BFGS training with L1/L2 regularization.
-/// Uses the pure Rust `liblbfgs-compliant-rs` crate.
+//! L-BFGS training with L1/L2 regularization.
+//! Uses the pure Rust `liblbfgs-compliant-rs` crate.
 
 use crate::crf1d::encode::Crf1dEncoder;
 use crate::train::LogFn;
 
 use liblbfgs_compliant_rs::{self as lbfgs, LbfgsParam, LineSearch, OrthantWise};
 
+#[allow(clippy::too_many_arguments)]
 pub fn train_lbfgs(
     encoder: &mut Crf1dEncoder,
     instances: &[crate::types::Instance],

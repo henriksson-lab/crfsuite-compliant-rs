@@ -14,13 +14,14 @@ pub struct Param {
     pub help: String,
 }
 
+#[derive(Default)]
 pub struct Params {
     params: Vec<Param>,
 }
 
 impl Params {
     pub fn new() -> Self {
-        Params { params: Vec::new() }
+        Self::default()
     }
 
     pub fn add_int(&mut self, name: &str, value: i32, help: &str) {

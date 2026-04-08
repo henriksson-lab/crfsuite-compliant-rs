@@ -192,10 +192,8 @@ pub struct CqdbWriter {
 
 impl CqdbWriter {
     pub fn new(flag: u32) -> Self {
-        let mut data = Vec::new();
-
         // Reserve space for header (24 bytes) + table refs (2048 bytes)
-        data.resize(OFFSET_DATA, 0);
+        let data = vec![0; OFFSET_DATA];
 
         CqdbWriter {
             flag,
