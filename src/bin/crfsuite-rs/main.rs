@@ -6,7 +6,11 @@ mod tag;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "crfsuite-rs", version = "0.12.2", about = "CRFsuite - Conditional Random Fields")]
+#[command(
+    name = "crfsuite-rs",
+    version = "0.12.2",
+    about = "CRFsuite - Conditional Random Fields"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -28,24 +32,32 @@ enum Commands {
         #[arg(short = 'm', long = "model", default_value = "")]
         model_path: String,
 
+        /// Write the training log to a generated file
+        #[arg(short = 'l', long = "log-to-file")]
+        log_to_file: bool,
+
+        /// Base name for a generated log file
+        #[arg(short = 'L', long = "logbase", default_value = "log.crfsuite")]
+        logbase: String,
+
         /// Set algorithm parameters (NAME=VALUE)
         #[arg(short = 'p', long = "set", num_args = 1)]
         params: Vec<String>,
 
         /// Split instances into N groups
         #[arg(short = 'g', long = "split", default_value = "0")]
-        split: i32,
+        split: String,
 
         /// Use M-th group for holdout evaluation
-        #[arg(short = 'e', long = "holdout", default_value = "-1")]
-        holdout: i32,
+        #[arg(short = 'e', long = "holdout")]
+        holdout: Option<String>,
 
         /// N-fold cross validation
         #[arg(short = 'x', long = "cross-validate")]
         cross_validate: bool,
 
         /// Show algorithm-specific parameters
-        #[arg(short = 'H', long = "help-parameters")]
+        #[arg(short = 'H', long = "help-parameters", alias = "help-params")]
         help_params: bool,
 
         /// Input data files
@@ -55,7 +67,7 @@ enum Commands {
     /// Tag sequences using a trained model
     Tag {
         /// Model file path
-        #[arg(short = 'm', long = "model")]
+        #[arg(short = 'm', long = "model", default_value = "")]
         model_path: String,
 
         /// Evaluate performance against gold labels
@@ -101,6 +113,8 @@ fn main() {
             model_type,
             algorithm,
             model_path,
+            log_to_file,
+            logbase,
             params,
             split,
             holdout,
@@ -122,9 +136,15 @@ fn main() {
                 model_type,
                 algorithm,
                 model_path,
+                log_to_file,
+                logbase,
+                param_strings: params,
                 params: parsed_params,
-                split,
-                holdout,
+                split: iwa::atoi(&split),
+                holdout: holdout
+                    .as_deref()
+                    .map(|value| iwa::atoi(value) - 1)
+                    .unwrap_or(-1),
                 cross_validate,
                 help_params,
                 input_files: files,
@@ -149,13 +169,11 @@ fn main() {
             quiet,
             input_file: file,
         }),
-        Commands::Dump { model } => cli_dump::run_dump(cli_dump::DumpArgs {
-            model_path: model,
-        }),
+        Commands::Dump { model } => cli_dump::run_dump(cli_dump::DumpArgs { model_path: model }),
     };
 
     if let Err(e) = result {
-        eprintln!("Error: {}", e);
+        eprintln!("ERROR: {}", e);
         std::process::exit(1);
     }
 }

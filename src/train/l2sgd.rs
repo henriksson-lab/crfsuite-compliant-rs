@@ -7,21 +7,27 @@
 use crate::crf1d::encode::Crf1dEncoder;
 use crate::train::LogFn;
 
+pub struct L2SgdOptions {
+    pub c2: f64,
+    pub max_iterations: i32,
+    pub period: i32,
+    pub delta: f64,
+    pub calibration_eta: f64,
+}
+
 pub fn train_l2sgd(
     encoder: &mut Crf1dEncoder,
     instances: &[crate::types::Instance],
-    c2: f64,
-    max_iterations: i32,
-    period: i32,
-    delta: f64,
+    options: &L2SgdOptions,
     log: &mut LogFn,
 ) -> Vec<f64> {
     let k = encoder.num_features;
     let n = instances.len() as f64;
-    let lambda = 2.0 * c2 / n;
+    let lambda = 2.0 * options.c2 / n;
 
-    // Calibration: simple initial learning rate
-    let eta0 = 0.1f64;
+    // Simplified calibration: CRFsuite defaults the initial eta to 0.1 and
+    // derives t0 from it after calibration.
+    let eta0 = options.calibration_eta;
     let t0 = 1.0 / (lambda * eta0);
 
     let mut w = vec![0.0f64; k];
@@ -29,7 +35,7 @@ pub fn train_l2sgd(
     let mut best_loss = f64::MAX;
     let mut total_t = t0;
 
-    for epoch in 1..=max_iterations {
+    for epoch in 1..=options.max_iterations {
         // Compute batch gradient
         let f = encoder.objective_and_gradients_batch(instances, &w, &mut g);
 
@@ -50,11 +56,14 @@ pub fn train_l2sgd(
             w[i] -= eta * g[i];
         }
 
-        (log)(&format!("***** Iteration #{} *****\nLoss: {:.6}\n\n", epoch, loss));
+        (log)(&format!(
+            "***** Iteration #{} *****\nLoss: {:.6}\n\n",
+            epoch, loss
+        ));
 
-        if epoch % period == 0 {
+        if epoch % options.period == 0 {
             let improvement = (best_loss - loss) / loss.abs().max(1.0);
-            if loss < best_loss && improvement < delta {
+            if loss < best_loss && improvement < options.delta {
                 (log)("Converged.\n");
                 break;
             }

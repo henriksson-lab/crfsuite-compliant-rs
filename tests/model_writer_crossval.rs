@@ -45,7 +45,9 @@ fn test_model_roundtrip() {
     assert_eq!(num_feats, 8); // all have non-zero weights
 
     for fid in 0..num_feats {
-        let f = model.get_feature(fid).expect(&format!("feature {} missing", fid));
+        let f = model
+            .get_feature(fid)
+            .unwrap_or_else(|| panic!("feature {} missing", fid));
         assert!(f.weight.is_finite());
     }
 

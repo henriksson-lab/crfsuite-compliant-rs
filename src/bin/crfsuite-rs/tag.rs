@@ -4,9 +4,9 @@ use std::time::Instant;
 
 use crfsuite_compliant_rs::crf1d::tag::Crf1dTagger;
 use crfsuite_compliant_rs::model::ModelReader;
-use crfsuite_compliant_rs::types::{Attribute, Item, Instance};
+use crfsuite_compliant_rs::types::{Attribute, Instance, Item};
 
-use crate::iwa::{IwaReader, TokenType};
+use crate::iwa::{atof, IwaReader, TokenType};
 
 pub struct TagArgs {
     pub model_path: String,
@@ -22,8 +22,8 @@ pub struct TagArgs {
 pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
     let mut fpo = io::BufWriter::new(io::stdout());
 
-    let model_data = std::fs::read(&args.model_path)?;
-    let model = ModelReader::open(&model_data).ok_or("Failed to open model")?;
+    let model_data = std::fs::read(&args.model_path).unwrap_or_else(|_| std::process::exit(3));
+    let model = ModelReader::open(&model_data).unwrap_or_else(|| std::process::exit(3));
     let mut tagger = Crf1dTagger::new(&model);
 
     let num_labels = model.num_labels() as i32;
@@ -37,7 +37,13 @@ pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
     let mut inst_total = 0i32;
 
     let input: Box<dyn BufRead> = match &args.input_file {
-        Some(path) => Box::new(BufReader::new(File::open(path)?)),
+        Some(path) if path == "-" => Box::new(BufReader::new(io::stdin())),
+        Some(path) => {
+            let file = File::open(path).map_err(|_| {
+                format!("failed to open the stream for the input data,\n  {}", path)
+            })?;
+            Box::new(BufReader::new(file))
+        }
         None => Box::new(BufReader::new(io::stdin())),
     };
 
@@ -46,7 +52,9 @@ pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut iwa = IwaReader::new(input);
     let mut inst = Instance::new();
-    let mut current_item = Item { contents: Vec::new() };
+    let mut current_item = Item {
+        contents: Vec::new(),
+    };
     let mut ref_labels: Vec<i32> = Vec::new();
     let mut current_label: i32 = -1;
     let mut is_first_field = true;
@@ -62,14 +70,14 @@ pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
             TokenType::Item => {
                 if is_first_field {
                     is_first_field = false;
-                    current_label = model.to_lid(&token.attr).unwrap_or(-1);
+                    current_label = model.to_lid(&token.attr).unwrap_or(num_labels);
                 } else {
                     let aid = model.to_aid(&token.attr).unwrap_or(-1);
                     if aid >= 0 {
                         let value = if token.value.is_empty() {
                             1.0
                         } else {
-                            token.value.parse::<f64>().unwrap_or(1.0)
+                            atof(&token.value)
                         };
                         current_item.contents.push(Attribute { aid, value });
                     }
@@ -97,11 +105,7 @@ pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
 
                         for t in 0..n {
                             if args.reference && t < ref_labels.len() {
-                                let ref_label = if ref_labels[t] >= 0 {
-                                    model.to_label(ref_labels[t]).unwrap_or("").to_string()
-                                } else {
-                                    String::new()
-                                };
+                                let ref_label = model.to_label(ref_labels[t]).unwrap_or("(null)");
                                 write!(fpo, "{}\t", ref_label)?;
                             }
 
@@ -148,7 +152,9 @@ pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                         inst_total += 1;
-                        if all_correct { inst_correct_count += 1; }
+                        if all_correct {
+                            inst_correct_count += 1;
+                        }
                     }
 
                     inst.items.clear();
@@ -164,7 +170,10 @@ pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.test {
-        writeln!(fpo, "Performance by label (#match, #model, #ref) (precision, recall, F1):")?;
+        writeln!(
+            fpo,
+            "Performance by label (#match, #model, #ref) (precision, recall, F1):"
+        )?;
         let mut macro_p = 0.0f64;
         let mut macro_r = 0.0f64;
         let mut macro_f = 0.0f64;
@@ -176,30 +185,65 @@ pub fn run_tag(args: TagArgs) -> Result<(), Box<dyn std::error::Error>> {
             let o = eval_obs[l] as f64;
             let p = if m > 0.0 { c / m } else { 0.0 };
             let r = if o > 0.0 { c / o } else { 0.0 };
-            let f = if p + r > 0.0 { 2.0 * p * r / (p + r) } else { 0.0 };
+            let f = if p + r > 0.0 {
+                2.0 * p * r / (p + r)
+            } else {
+                0.0
+            };
             macro_p += p;
             macro_r += r;
             macro_f += f;
 
             if eval_obs[l] == 0 {
-                writeln!(fpo, "    {}: ({}, {}, {}) (******, ******, ******)",
-                    lname, eval_correct[l], eval_model[l], eval_obs[l])?;
+                writeln!(
+                    fpo,
+                    "    {}: ({}, {}, {}) (******, ******, ******)",
+                    lname, eval_correct[l], eval_model[l], eval_obs[l]
+                )?;
             } else {
-                writeln!(fpo, "    {}: ({}, {}, {}) ({:.4}, {:.4}, {:.4})",
-                    lname, eval_correct[l], eval_model[l], eval_obs[l], p, r, f)?;
+                writeln!(
+                    fpo,
+                    "    {}: ({}, {}, {}) ({:.4}, {:.4}, {:.4})",
+                    lname, eval_correct[l], eval_model[l], eval_obs[l], p, r, f
+                )?;
             }
         }
 
         let nl = num_labels as f64;
-        writeln!(fpo, "Macro-average precision, recall, F1: ({:.6}, {:.6}, {:.6})",
-            macro_p / nl, macro_r / nl, macro_f / nl)?;
-        let item_acc = if item_total > 0 { item_correct as f64 / item_total as f64 } else { 0.0 };
-        writeln!(fpo, "Item accuracy: {} / {} ({:.4})", item_correct, item_total, item_acc)?;
-        let inst_acc = if inst_total > 0 { inst_correct_count as f64 / inst_total as f64 } else { 0.0 };
-        writeln!(fpo, "Instance accuracy: {} / {} ({:.4})", inst_correct_count, inst_total, inst_acc)?;
+        writeln!(
+            fpo,
+            "Macro-average precision, recall, F1: ({:.6}, {:.6}, {:.6})",
+            macro_p / nl,
+            macro_r / nl,
+            macro_f / nl
+        )?;
+        let item_acc = if item_total > 0 {
+            item_correct as f64 / item_total as f64
+        } else {
+            0.0
+        };
+        writeln!(
+            fpo,
+            "Item accuracy: {} / {} ({:.4})",
+            item_correct, item_total, item_acc
+        )?;
+        let inst_acc = if inst_total > 0 {
+            inst_correct_count as f64 / inst_total as f64
+        } else {
+            0.0
+        };
+        writeln!(
+            fpo,
+            "Instance accuracy: {} / {} ({:.4})",
+            inst_correct_count, inst_total, inst_acc
+        )?;
         let elapsed = start.elapsed().as_secs_f64();
-        writeln!(fpo, "Elapsed time: {:.6} [sec] ({:.1} [instance/sec])",
-            elapsed, num_instances as f64 / elapsed)?;
+        writeln!(
+            fpo,
+            "Elapsed time: {:.6} [sec] ({:.1} [instance/sec])",
+            elapsed,
+            num_instances as f64 / elapsed
+        )?;
     }
 
     Ok(())

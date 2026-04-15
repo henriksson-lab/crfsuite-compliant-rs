@@ -57,7 +57,11 @@ impl<R: BufRead> IwaReader<R> {
         loop {
             match self.state {
                 State::Done => {
-                    return Token { token_type: TokenType::Eof, attr: String::new(), value: String::new() };
+                    return Token {
+                        token_type: TokenType::Eof,
+                        attr: String::new(),
+                        value: String::new(),
+                    };
                 }
                 State::Start | State::EndOfItem => {
                     self.line.clear();
@@ -65,28 +69,48 @@ impl<R: BufRead> IwaReader<R> {
                         Ok(0) => {
                             if self.state == State::EndOfItem {
                                 self.state = State::Done;
-                                return Token { token_type: TokenType::None, attr: String::new(), value: String::new() };
+                                return Token {
+                                    token_type: TokenType::None,
+                                    attr: String::new(),
+                                    value: String::new(),
+                                };
                             }
                             self.state = State::Done;
-                            return Token { token_type: TokenType::Eof, attr: String::new(), value: String::new() };
+                            return Token {
+                                token_type: TokenType::Eof,
+                                attr: String::new(),
+                                value: String::new(),
+                            };
                         }
                         Ok(_) => {
                             let end = self.line.trim_end_matches(['\n', '\r']).len();
                             if end == 0 {
                                 if self.state == State::EndOfItem {
                                     self.state = State::Start;
-                                    return Token { token_type: TokenType::None, attr: String::new(), value: String::new() };
+                                    return Token {
+                                        token_type: TokenType::None,
+                                        attr: String::new(),
+                                        value: String::new(),
+                                    };
                                 }
                                 continue;
                             }
                             self.parse_line(end);
                             self.field_idx = 0;
                             self.state = State::InItem;
-                            return Token { token_type: TokenType::Boi, attr: String::new(), value: String::new() };
+                            return Token {
+                                token_type: TokenType::Boi,
+                                attr: String::new(),
+                                value: String::new(),
+                            };
                         }
                         Err(_) => {
                             self.state = State::Done;
-                            return Token { token_type: TokenType::Eof, attr: String::new(), value: String::new() };
+                            return Token {
+                                token_type: TokenType::Eof,
+                                attr: String::new(),
+                                value: String::new(),
+                            };
                         }
                     }
                 }
@@ -101,7 +125,11 @@ impl<R: BufRead> IwaReader<R> {
                         };
                     } else {
                         self.state = State::EndOfItem;
-                        return Token { token_type: TokenType::Eoi, attr: String::new(), value: String::new() };
+                        return Token {
+                            token_type: TokenType::Eoi,
+                            attr: String::new(),
+                            value: String::new(),
+                        };
                     }
                 }
             }
@@ -112,7 +140,9 @@ impl<R: BufRead> IwaReader<R> {
         self.fields.clear();
         let line = &self.line[..end];
         for field in line.split('\t') {
-            if field.is_empty() { continue; }
+            if field.is_empty() {
+                continue;
+            }
             let (attr, value) = parse_field(field);
             self.fields.push(Field { attr, value });
         }
@@ -148,6 +178,43 @@ fn parse_field(field: &str) -> (String, String) {
     (attr, String::new())
 }
 
+/// Parse a floating point value with C `atof`-style prefix handling.
+///
+/// CRFsuite's frontend uses `atof`, so values like `2abc` are accepted as
+/// `2.0`, while completely invalid values become `0.0`.
+pub fn atof(value: &str) -> f64 {
+    let value = value.trim_start();
+    for end in (1..=value.len()).rev() {
+        if value.is_char_boundary(end) {
+            if let Ok(v) = value[..end].parse::<f64>() {
+                return v;
+            }
+        }
+    }
+    0.0
+}
+
+/// Parse an integer with C `atoi`-style prefix handling.
+pub fn atoi(value: &str) -> i32 {
+    let value = value.trim_start();
+    let mut last = 0;
+    for (i, ch) in value.char_indices() {
+        if i == 0 && (ch == '-' || ch == '+') {
+            last = ch.len_utf8();
+            continue;
+        }
+        if ch.is_ascii_digit() {
+            last = i + ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+    if last == 0 || value[..last].chars().all(|ch| ch == '-' || ch == '+') {
+        return 0;
+    }
+    value[..last].parse::<i32>().unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,8 +223,31 @@ mod tests {
     #[test]
     fn test_parse_field() {
         assert_eq!(parse_field("attr"), ("attr".to_string(), "".to_string()));
-        assert_eq!(parse_field("attr:1.0"), ("attr".to_string(), "1.0".to_string()));
-        assert_eq!(parse_field("a\\:b:val"), ("a:b".to_string(), "val".to_string()));
+        assert_eq!(
+            parse_field("attr:1.0"),
+            ("attr".to_string(), "1.0".to_string())
+        );
+        assert_eq!(
+            parse_field("a\\:b:val"),
+            ("a:b".to_string(), "val".to_string())
+        );
+    }
+
+    #[test]
+    fn test_atof_prefix_handling() {
+        assert_eq!(atof("2abc"), 2.0);
+        assert_eq!(atof("1e+"), 1.0);
+        assert_eq!(atof("not-a-number"), 0.0);
+        assert_eq!(atof("  -3.5x"), -3.5);
+    }
+
+    #[test]
+    fn test_atoi_prefix_handling() {
+        assert_eq!(atoi("12abc"), 12);
+        assert_eq!(atoi("  -7x"), -7);
+        assert_eq!(atoi("+5"), 5);
+        assert_eq!(atoi("not-a-number"), 0);
+        assert_eq!(atoi("-"), 0);
     }
 
     #[test]
