@@ -1,7 +1,7 @@
 //! Passive-Aggressive training (PA, PA-I, PA-II variants).
 
 use crate::crf1d::encode::Crf1dEncoder;
-use crate::train::LogFn;
+use crate::train::{HoldoutFn, LogFn};
 
 #[allow(clippy::too_many_arguments)]
 pub fn train_passive_aggressive(
@@ -14,17 +14,28 @@ pub fn train_passive_aggressive(
     max_iterations: i32,
     epsilon: f64,
     log: &mut LogFn,
+    mut holdout: Option<&mut HoldoutFn<'_>>,
 ) -> Vec<f64> {
     let k = encoder.num_features;
     let n = instances.len();
     let mut w = vec![0.0f64; k];
     let mut ws = vec![0.0f64; k];
+    let mut wa = vec![0.0f64; k];
     let mut u = 1u64;
 
     let max_t = instances.iter().map(|i| i.num_items()).max().unwrap_or(0);
     let mut pred = vec![0i32; max_t];
     let mut delta = vec![0.0f64; k];
+    let mut used = vec![false; k];
     let mut active_indices: Vec<usize> = Vec::with_capacity(k / 4);
+
+    (log)("Passive Aggressive\n");
+    (log)(&format!("type: {}\n", pa_type));
+    (log)(&format!("c: {:.6}\n", c));
+    (log)(&format!("error_sensitive: {}\n", error_sensitive as i32));
+    (log)(&format!("averaging: {}\n", averaging as i32));
+    (log)(&format!("max_iterations: {}\n", max_iterations));
+    (log)(&format!("epsilon: {:.6}\n\n", epsilon));
 
     for epoch in 1..=max_iterations {
         for i in 0..n {
@@ -55,12 +66,18 @@ pub fn train_passive_aggressive(
                 active_indices.clear();
                 encoder.features_on_path(inst, &inst.labels, |fid, val| {
                     let idx = fid as usize;
-                    if delta[idx] == 0.0 { active_indices.push(idx); }
+                    if !used[idx] {
+                        used[idx] = true;
+                        active_indices.push(idx);
+                    }
                     delta[idx] += val;
                 });
                 encoder.features_on_path(inst, &pred[..t_max], |fid, val| {
                     let idx = fid as usize;
-                    if delta[idx] == 0.0 { active_indices.push(idx); }
+                    if !used[idx] {
+                        used[idx] = true;
+                        active_indices.push(idx);
+                    }
                     delta[idx] -= val;
                 });
 
@@ -86,6 +103,7 @@ pub fn train_passive_aggressive(
 
                 for &i in &active_indices {
                     delta[i] = 0.0;
+                    used[i] = false;
                 }
 
                 sum_loss += cost * inst.weight;
@@ -94,19 +112,34 @@ pub fn train_passive_aggressive(
             u += 1;
         }
 
-        (log)(&format!("***** Iteration #{} *****\nLoss: {:.6}\n\n", epoch, sum_loss));
+        if averaging {
+            let inv_u = 1.0 / u as f64;
+            for i in 0..k {
+                wa[i] = w[i] - inv_u * ws[i];
+            }
+        } else {
+            wa.copy_from_slice(&w);
+        }
+
+        let feature_norm = w.iter().map(|value| value * value).sum::<f64>().sqrt();
+        (log)(&format!("***** Iteration #{} *****\n", epoch));
+        (log)(&format!("Loss: {:.6}\n", sum_loss));
+        (log)(&format!("Feature norm: {:.6}\n", feature_norm));
+        (log)("Seconds required for this iteration: 0.000\n");
+
+        if let Some(eval) = holdout.as_deref_mut() {
+            eval(encoder, &wa, log);
+        }
+
+        (log)("\n");
 
         if (sum_loss / n as f64) < epsilon {
+            (log)("Terminated with the stopping criterion\n\n");
             break;
         }
     }
 
-    if averaging {
-        let inv_u = 1.0 / u as f64;
-        for i in 0..k {
-            w[i] -= inv_u * ws[i];
-        }
-    }
+    (log)("Total seconds required for training: 0.000\n\n");
 
-    w
+    wa
 }

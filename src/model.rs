@@ -14,16 +14,30 @@ fn read_u32(buf: &[u8], off: usize) -> u32 {
     u32::from_le_bytes([buf[off], buf[off + 1], buf[off + 2], buf[off + 3]])
 }
 
+fn read_u32_checked(buf: &[u8], off: usize) -> Option<u32> {
+    Some(u32::from_le_bytes(buf.get(off..off + 4)?.try_into().ok()?))
+}
+
 fn read_f64(buf: &[u8], off: usize) -> f64 {
     f64::from_le_bytes([
-        buf[off], buf[off+1], buf[off+2], buf[off+3],
-        buf[off+4], buf[off+5], buf[off+6], buf[off+7],
+        buf[off],
+        buf[off + 1],
+        buf[off + 2],
+        buf[off + 3],
+        buf[off + 4],
+        buf[off + 5],
+        buf[off + 6],
+        buf[off + 7],
     ])
 }
 
 const HEADER_SIZE: usize = 48;
 const CHUNK_HEADER_SIZE: usize = 12; // chunk_id(4) + size(4) + num(4)
-const FEATURE_SIZE: usize = 20;      // type(4) + src(4) + dst(4) + weight(8)
+const FEATURE_SIZE: usize = 20; // type(4) + src(4) + dst(4) + weight(8)
+
+fn valid_chunk_header(buf: &[u8], off: usize, id: &[u8; 4]) -> bool {
+    buf.get(off..off + 4) == Some(id.as_slice()) && off + CHUNK_HEADER_SIZE <= buf.len()
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Feature {
@@ -65,17 +79,33 @@ impl<'a> ModelReader<'a> {
             return None;
         }
 
-        let _size = read_u32(buffer, 4);
-        let _version = read_u32(buffer, 12);
-        let num_labels = read_u32(buffer, 20);
-        let num_attrs = read_u32(buffer, 24);
-        let off_features = read_u32(buffer, 28);
+        let _size = read_u32_checked(buffer, 4)?;
+        let _version = read_u32_checked(buffer, 12)?;
+        let num_labels = read_u32_checked(buffer, 20)?;
+        let num_attrs = read_u32_checked(buffer, 24)?;
+        let off_features = read_u32_checked(buffer, 28)?;
+        if !valid_chunk_header(buffer, off_features as usize, b"FEAT") {
+            return None;
+        }
         // num_features is in the FEAT chunk header, not the file header
-        let num_features = read_u32(buffer, off_features as usize + 8);
-        let off_labels = read_u32(buffer, 32);
-        let off_attrs = read_u32(buffer, 36);
-        let off_labelrefs = read_u32(buffer, 40);
-        let off_attrrefs = read_u32(buffer, 44);
+        let num_features = read_u32_checked(buffer, off_features as usize + 8)?;
+        let off_labels = read_u32_checked(buffer, 32)?;
+        let off_attrs = read_u32_checked(buffer, 36)?;
+        let off_labelrefs = read_u32_checked(buffer, 40)?;
+        let off_attrrefs = read_u32_checked(buffer, 44)?;
+        if off_labels as usize >= buffer.len()
+            || off_attrs as usize >= buffer.len()
+            || !valid_chunk_header(buffer, off_labelrefs as usize, b"LFRF")
+            || !valid_chunk_header(buffer, off_attrrefs as usize, b"AFRF")
+        {
+            return None;
+        }
+
+        let feature_bytes =
+            CHUNK_HEADER_SIZE.checked_add(FEATURE_SIZE.checked_mul(num_features as usize)?)?;
+        if (off_features as usize).checked_add(feature_bytes)? > buffer.len() {
+            return None;
+        }
 
         // Open CQDBs — pass remaining buffer from offset (C does this)
         let labels = CqdbReader::open(&buffer[off_labels as usize..])?;
@@ -109,7 +139,8 @@ impl<'a> ModelReader<'a> {
         // Precompute all features
         reader.cached_features = (0..num_features)
             .map(|fid| {
-                let offset = off_features as usize + CHUNK_HEADER_SIZE + FEATURE_SIZE * fid as usize;
+                let offset =
+                    off_features as usize + CHUNK_HEADER_SIZE + FEATURE_SIZE * fid as usize;
                 Feature {
                     ftype: read_u32(buffer, offset),
                     src: read_u32(buffer, offset + 4),
@@ -122,9 +153,15 @@ impl<'a> ModelReader<'a> {
         Some(reader)
     }
 
-    pub fn num_features(&self) -> u32 { self.num_features }
-    pub fn num_labels(&self) -> u32 { self.num_labels }
-    pub fn num_attrs(&self) -> u32 { self.num_attrs }
+    pub fn num_features(&self) -> u32 {
+        self.num_features
+    }
+    pub fn num_labels(&self) -> u32 {
+        self.num_labels
+    }
+    pub fn num_attrs(&self) -> u32 {
+        self.num_attrs
+    }
 
     pub fn to_label(&self, lid: i32) -> Option<&str> {
         self.labels.to_string(lid)
@@ -206,13 +243,27 @@ impl<'a> ModelReader<'a> {
 
     // ── Header fields for dump ──────────────────────────────────────────
 
-    pub fn header_size(&self) -> u32 { read_u32(self.buffer, 4) }
-    pub fn header_version(&self) -> u32 { read_u32(self.buffer, 12) }
-    pub fn off_features(&self) -> u32 { self.off_features }
-    pub fn off_labels(&self) -> u32 { self.off_labels }
-    pub fn off_attrs(&self) -> u32 { self.off_attrs }
-    pub fn off_labelrefs(&self) -> u32 { self.off_labelrefs }
-    pub fn off_attrrefs(&self) -> u32 { self.off_attrrefs }
+    pub fn header_size(&self) -> u32 {
+        read_u32(self.buffer, 4)
+    }
+    pub fn header_version(&self) -> u32 {
+        read_u32(self.buffer, 12)
+    }
+    pub fn off_features(&self) -> u32 {
+        self.off_features
+    }
+    pub fn off_labels(&self) -> u32 {
+        self.off_labels
+    }
+    pub fn off_attrs(&self) -> u32 {
+        self.off_attrs
+    }
+    pub fn off_labelrefs(&self) -> u32 {
+        self.off_labelrefs
+    }
+    pub fn off_attrrefs(&self) -> u32 {
+        self.off_attrrefs
+    }
 }
 
 #[cfg(test)]
@@ -224,6 +275,10 @@ mod tests {
         std::fs::read(root.join("test_data/model_c.bin")).expect("model_c.bin not found")
     }
 
+    fn write_u32(buf: &mut [u8], off: usize, value: u32) {
+        buf[off..off + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
     #[test]
     fn test_model_reader_open() {
         let data = model_bytes();
@@ -231,6 +286,102 @@ mod tests {
         assert_eq!(model.num_labels(), 4);
         assert!(model.num_attrs() > 0);
         assert!(model.num_features() > 0);
+    }
+
+    #[test]
+    fn test_model_reader_rejects_malformed_offsets() {
+        let data = model_bytes();
+        for (off, value) in [
+            (28, u32::MAX),
+            (32, u32::MAX),
+            (36, u32::MAX),
+            (40, u32::MAX),
+            (44, u32::MAX),
+        ] {
+            let mut bad = data.clone();
+            write_u32(&mut bad, off, value);
+            assert!(
+                ModelReader::open(&bad).is_none(),
+                "offset {} should be rejected",
+                off
+            );
+        }
+    }
+
+    #[test]
+    fn test_model_reader_rejects_bad_magic_type_and_truncated_header() {
+        let data = model_bytes();
+
+        assert!(ModelReader::open(&[]).is_none());
+        assert!(ModelReader::open(&data[..HEADER_SIZE - 1]).is_none());
+
+        let mut bad = data.clone();
+        bad[0..4].copy_from_slice(b"NOPE");
+        assert!(ModelReader::open(&bad).is_none());
+
+        let mut bad = data.clone();
+        bad[8..12].copy_from_slice(b"NOPE");
+        assert!(ModelReader::open(&bad).is_none());
+    }
+
+    #[test]
+    fn test_model_reader_rejects_unknown_chunks_and_truncated_features() {
+        let data = model_bytes();
+
+        let mut bad = data.clone();
+        let off_features = read_u32(&bad, 28) as usize;
+        bad[off_features..off_features + 4].copy_from_slice(b"NOPE");
+        assert!(ModelReader::open(&bad).is_none());
+
+        let mut bad = data.clone();
+        let off_labelrefs = read_u32(&bad, 40) as usize;
+        bad[off_labelrefs..off_labelrefs + 4].copy_from_slice(b"NOPE");
+        assert!(ModelReader::open(&bad).is_none());
+
+        let mut bad = data.clone();
+        let off_attrrefs = read_u32(&bad, 44) as usize;
+        bad[off_attrrefs..off_attrrefs + 4].copy_from_slice(b"NOPE");
+        assert!(ModelReader::open(&bad).is_none());
+
+        let mut bad = data.clone();
+        let off_features = read_u32(&bad, 28);
+        bad.truncate(off_features as usize + CHUNK_HEADER_SIZE + FEATURE_SIZE - 1);
+        assert!(ModelReader::open(&bad).is_none());
+    }
+
+    #[test]
+    fn test_model_reader_rejects_invalid_cqdb_sections() {
+        let data = model_bytes();
+
+        let mut bad = data.clone();
+        let off_labels = read_u32(&bad, 32) as usize;
+        bad[off_labels..off_labels + 4].copy_from_slice(b"NOPE");
+        assert!(ModelReader::open(&bad).is_none());
+
+        let mut bad = data.clone();
+        let off_attrs = read_u32(&bad, 36) as usize;
+        bad[off_attrs + 12..off_attrs + 16].copy_from_slice(&0u32.to_le_bytes());
+        assert!(ModelReader::open(&bad).is_none());
+
+        let mut bad = data.clone();
+        let off_labels = read_u32(&bad, 32) as usize;
+        bad.truncate(off_labels + 24);
+        assert!(ModelReader::open(&bad).is_none());
+    }
+
+    #[test]
+    fn test_model_reader_rejects_truncated_ref_chunk_headers() {
+        let data = model_bytes();
+
+        let mut bad = data.clone();
+        let off_labelrefs = read_u32(&bad, 40) as usize;
+        bad.truncate(off_labelrefs + CHUNK_HEADER_SIZE - 1);
+        assert!(ModelReader::open(&bad).is_none());
+
+        let mut bad = data.clone();
+        let off_attrrefs = read_u32(&bad, 44) as usize;
+        bad.truncate(off_attrrefs + CHUNK_HEADER_SIZE - 1);
+        assert!(ModelReader::open(&bad).is_none());
     }
 
     #[test]
@@ -275,7 +426,10 @@ mod tests {
             for &fid in refs {
                 let f = model.get_feature(fid as u32).unwrap();
                 assert_eq!(f.ftype, 0, "attr ref should point to state features");
-                assert_eq!(f.src, aid as u32, "state feature src should be the attribute");
+                assert_eq!(
+                    f.src, aid as u32,
+                    "state feature src should be the attribute"
+                );
             }
         }
     }

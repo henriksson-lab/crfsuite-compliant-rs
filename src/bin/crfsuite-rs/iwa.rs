@@ -83,7 +83,7 @@ impl<R: BufRead> IwaReader<R> {
                             };
                         }
                         Ok(_) => {
-                            let end = self.line.trim_end_matches(['\n', '\r']).len();
+                            let end = self.line.trim_end_matches('\n').len();
                             if end == 0 {
                                 if self.state == State::EndOfItem {
                                     self.state = State::Start;
@@ -167,8 +167,7 @@ fn parse_field(field: &str) -> (String, String) {
             }
         }
         if b == b':' {
-            // Found unescaped colon — rest is value
-            let value = String::from_utf8_lossy(&bytes[i + 1..]).into_owned();
+            let value = parse_value(&bytes[i + 1..]);
             return (attr, value);
         }
         attr.push(b as char);
@@ -178,12 +177,37 @@ fn parse_field(field: &str) -> (String, String) {
     (attr, String::new())
 }
 
+fn parse_value(bytes: &[u8]) -> String {
+    let mut value = String::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'\\' && i + 1 < bytes.len() {
+            let next = bytes[i + 1];
+            if next == b'\\' || next == b':' {
+                value.push(next as char);
+                i += 2;
+                continue;
+            }
+        }
+        if b == b':' {
+            break;
+        }
+        value.push(b as char);
+        i += 1;
+    }
+    value
+}
+
 /// Parse a floating point value with C `atof`-style prefix handling.
 ///
 /// CRFsuite's frontend uses `atof`, so values like `2abc` are accepted as
 /// `2.0`, while completely invalid values become `0.0`.
 pub fn atof(value: &str) -> f64 {
     let value = value.trim_start();
+    if let Some(v) = parse_hex_float(value) {
+        return v;
+    }
     for end in (1..=value.len()).rev() {
         if value.is_char_boundary(end) {
             if let Ok(v) = value[..end].parse::<f64>() {
@@ -192,6 +216,95 @@ pub fn atof(value: &str) -> f64 {
         }
     }
     0.0
+}
+
+fn parse_hex_float(value: &str) -> Option<f64> {
+    let bytes = value.as_bytes();
+    let mut i = 0;
+    let sign = if bytes.get(i) == Some(&b'-') {
+        i += 1;
+        -1.0
+    } else {
+        if bytes.get(i) == Some(&b'+') {
+            i += 1;
+        }
+        1.0
+    };
+
+    if bytes.get(i) != Some(&b'0') || !matches!(bytes.get(i + 1), Some(b'x' | b'X')) {
+        return None;
+    }
+    i += 2;
+
+    let mut mantissa = 0.0;
+    let mut digits = 0;
+    while let Some(b) = bytes.get(i).copied() {
+        let Some(digit) = hex_digit(b) else {
+            break;
+        };
+        mantissa = mantissa * 16.0 + digit as f64;
+        digits += 1;
+        i += 1;
+    }
+
+    if bytes.get(i) == Some(&b'.') {
+        i += 1;
+        let mut scale = 1.0 / 16.0;
+        while let Some(b) = bytes.get(i).copied() {
+            let Some(digit) = hex_digit(b) else {
+                break;
+            };
+            mantissa += digit as f64 * scale;
+            scale /= 16.0;
+            digits += 1;
+            i += 1;
+        }
+    }
+
+    if digits == 0 {
+        return None;
+    }
+
+    if !matches!(bytes.get(i), Some(b'p' | b'P')) {
+        return Some(sign * mantissa);
+    }
+    i += 1;
+
+    let exp_sign = if bytes.get(i) == Some(&b'-') {
+        i += 1;
+        -1
+    } else {
+        if bytes.get(i) == Some(&b'+') {
+            i += 1;
+        }
+        1
+    };
+
+    let exp_start = i;
+    let mut exponent: i32 = 0;
+    while let Some(b) = bytes.get(i).copied() {
+        if !b.is_ascii_digit() {
+            break;
+        }
+        exponent = exponent
+            .saturating_mul(10)
+            .saturating_add((b - b'0') as i32);
+        i += 1;
+    }
+    if i == exp_start {
+        return Some(sign * mantissa);
+    }
+
+    Some(sign * mantissa * 2.0_f64.powi(exp_sign * exponent))
+}
+
+fn hex_digit(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
 }
 
 /// Parse an integer with C `atoi`-style prefix handling.
@@ -212,7 +325,14 @@ pub fn atoi(value: &str) -> i32 {
     if last == 0 || value[..last].chars().all(|ch| ch == '-' || ch == '+') {
         return 0;
     }
-    value[..last].parse::<i32>().unwrap_or(0)
+    let parsed = value[..last].parse::<i128>().unwrap_or_else(|_| {
+        if value.starts_with('-') {
+            i128::from(i64::MIN)
+        } else {
+            i128::from(i64::MAX)
+        }
+    });
+    parsed.clamp(i128::from(i64::MIN), i128::from(i64::MAX)) as i64 as i32
 }
 
 #[cfg(test)]
@@ -231,6 +351,14 @@ mod tests {
             parse_field("a\\:b:val"),
             ("a:b".to_string(), "val".to_string())
         );
+        assert_eq!(
+            parse_field("attr:a\\:b\\\\c"),
+            ("attr".to_string(), "a:b\\c".to_string())
+        );
+        assert_eq!(
+            parse_field("attr:a:b"),
+            ("attr".to_string(), "a".to_string())
+        );
     }
 
     #[test]
@@ -239,6 +367,10 @@ mod tests {
         assert_eq!(atof("1e+"), 1.0);
         assert_eq!(atof("not-a-number"), 0.0);
         assert_eq!(atof("  -3.5x"), -3.5);
+        assert_eq!(atof("0x1p2"), 4.0);
+        assert_eq!(atof("0x1.8p+1tail"), 3.0);
+        assert!(atof("nan(payload)").is_nan());
+        assert!(atof("Infinity").is_infinite());
     }
 
     #[test]
@@ -248,6 +380,10 @@ mod tests {
         assert_eq!(atoi("+5"), 5);
         assert_eq!(atoi("not-a-number"), 0);
         assert_eq!(atoi("-"), 0);
+        assert_eq!(atoi("2147483648"), i32::MIN);
+        assert_eq!(atoi("999999999999999999999999"), -1);
+        assert_eq!(atoi("-2147483649"), i32::MAX);
+        assert_eq!(atoi("-999999999999999999999999"), 0);
     }
 
     #[test]

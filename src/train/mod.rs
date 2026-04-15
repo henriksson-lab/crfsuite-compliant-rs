@@ -7,6 +7,10 @@ pub mod arow;
 /// Logging callback type for training progress.
 pub type LogFn = Box<dyn FnMut(&str)>;
 
+/// Optional callback for per-epoch holdout evaluation.
+pub type HoldoutFn<'a> =
+    dyn FnMut(&mut crate::crf1d::encode::Crf1dEncoder, &[f64], &mut LogFn) + 'a;
+
 /// Convenience: no-op logger.
 pub fn noop_logger() -> LogFn {
     Box::new(|_| {})

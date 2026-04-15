@@ -227,6 +227,30 @@ impl Crf1dEncoder {
         -logl // negative log-likelihood (we minimize this)
     }
 
+    /// Compute one instance's negative log-likelihood and apply the online
+    /// CRFsuite update: observed features are added and model expectations are
+    /// subtracted from `w`, both scaled by `gain * inst.weight`.
+    pub fn objective_and_gradients_online(
+        &mut self,
+        inst: &Instance,
+        w: &mut [f64],
+        scale: f64,
+        gain: f64,
+    ) -> f64 {
+        self.set_weights(w, scale);
+        self.set_instance(inst);
+        self.ctx.exp_state();
+        self.ctx.exp_transition();
+        self.ctx.alpha_score();
+        self.ctx.beta_score();
+        self.ctx.marginals();
+
+        let scaled_gain = gain * inst.weight;
+        self.observation_expectation(inst, w, scaled_gain);
+        self.model_expectation(inst, w, -scaled_gain);
+        (-self.ctx.score(&inst.labels) + self.ctx.lognorm()) * inst.weight
+    }
+
     /// Run Viterbi on the current instance. Returns (labels, score).
     pub fn viterbi(&mut self, labels: &mut [i32]) -> f64 {
         self.ctx.viterbi(labels)
@@ -331,5 +355,64 @@ impl Crf1dEncoder {
             &self.label_refs,
             &self.attr_refs,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{Attribute, Instance, Item};
+
+    fn tiny_instance() -> Instance {
+        Instance {
+            items: vec![
+                Item {
+                    contents: vec![Attribute { aid: 0, value: 1.0 }],
+                },
+                Item {
+                    contents: vec![Attribute { aid: 1, value: 1.0 }],
+                },
+            ],
+            labels: vec![0, 1],
+            weight: 1.0,
+            group: 0,
+        }
+    }
+
+    #[test]
+    fn objective_and_gradients_match_hand_computed_fixture() {
+        let instances = vec![tiny_instance()];
+        let mut encoder = Crf1dEncoder::new(&instances, 2, 2, 0.0, false, false);
+        let weights = vec![0.0; encoder.num_features];
+        let mut gradient = vec![0.0; encoder.num_features];
+
+        let objective = encoder.objective_and_gradients_batch(&instances, &weights, &mut gradient);
+
+        assert_eq!(encoder.num_features, 3);
+        assert_eq!(
+            encoder
+                .features
+                .iter()
+                .map(|f| (f.ftype, f.src, f.dst, f.freq))
+                .collect::<Vec<_>>(),
+            vec![(0, 0, 0, 1.0), (0, 1, 1, 1.0), (1, 0, 1, 1.0)]
+        );
+        assert!((objective - 4.0f64.ln()).abs() <= f64::EPSILON);
+        assert_eq!(gradient, vec![-0.5, -0.5, -0.75]);
+    }
+
+    #[test]
+    fn objective_and_gradients_apply_instance_weight_like_c() {
+        let mut inst = tiny_instance();
+        inst.weight = 2.0;
+        let instances = vec![inst];
+        let mut encoder = Crf1dEncoder::new(&instances, 2, 2, 0.0, false, false);
+        let weights = vec![0.0; encoder.num_features];
+        let mut gradient = vec![0.0; encoder.num_features];
+
+        let objective = encoder.objective_and_gradients_batch(&instances, &weights, &mut gradient);
+
+        assert!((objective - 2.0 * 4.0f64.ln()).abs() <= f64::EPSILON);
+        assert_eq!(gradient, vec![-1.0, -1.0, -1.5]);
     }
 }

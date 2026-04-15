@@ -1,0 +1,13 @@
+@weight
+A	x
+
+@weight:not-a-number
+B	y
+
+@weight:0
+@weight:2
+C	z
+
+D	w
+@weight:2
+

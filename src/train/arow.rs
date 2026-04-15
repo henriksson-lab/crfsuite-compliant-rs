@@ -1,8 +1,9 @@
 //! AROW (Adaptive Regularization of Weights) training.
 
 use crate::crf1d::encode::Crf1dEncoder;
-use crate::train::LogFn;
+use crate::train::{HoldoutFn, LogFn};
 
+#[allow(clippy::too_many_arguments)]
 pub fn train_arow(
     encoder: &mut Crf1dEncoder,
     instances: &mut [crate::types::Instance],
@@ -11,6 +12,7 @@ pub fn train_arow(
     max_iterations: i32,
     epsilon: f64,
     log: &mut LogFn,
+    mut holdout: Option<&mut HoldoutFn<'_>>,
 ) -> Vec<f64> {
     let k = encoder.num_features;
     let n = instances.len();
@@ -21,7 +23,14 @@ pub fn train_arow(
     let max_t = instances.iter().map(|i| i.num_items()).max().unwrap_or(0);
     let mut pred = vec![0i32; max_t];
     let mut delta = vec![0.0f64; k];
+    let mut used = vec![false; k];
     let mut active_indices: Vec<usize> = Vec::with_capacity(k / 4);
+
+    (log)("Adaptive Regularization of Weights (AROW)\n");
+    (log)(&format!("variance: {:.6}\n", variance));
+    (log)(&format!("gamma: {:.6}\n", gamma));
+    (log)(&format!("max_iterations: {}\n", max_iterations));
+    (log)(&format!("epsilon: {:.6}\n\n", epsilon));
 
     for epoch in 1..=max_iterations {
         for i in 0..n {
@@ -49,12 +58,18 @@ pub fn train_arow(
                 active_indices.clear();
                 encoder.features_on_path(inst, &inst.labels, |fid, val| {
                     let idx = fid as usize;
-                    if delta[idx] == 0.0 { active_indices.push(idx); }
+                    if !used[idx] {
+                        used[idx] = true;
+                        active_indices.push(idx);
+                    }
                     delta[idx] += inst.weight * val;
                 });
                 encoder.features_on_path(inst, &pred[..t_max], |fid, val| {
                     let idx = fid as usize;
-                    if delta[idx] == 0.0 { active_indices.push(idx); }
+                    if !used[idx] {
+                        used[idx] = true;
+                        active_indices.push(idx);
+                    }
                     delta[idx] -= inst.weight * val;
                 });
 
@@ -78,18 +93,32 @@ pub fn train_arow(
                 // Clear delta (only active entries)
                 for &i in &active_indices {
                     delta[i] = 0.0;
+                    used[i] = false;
                 }
 
                 sum_loss += cost * inst.weight;
             }
         }
 
-        (log)(&format!("***** Iteration #{} *****\nLoss: {:.6}\n\n", epoch, sum_loss));
+        let feature_norm = mean.iter().map(|value| value * value).sum::<f64>().sqrt();
+        (log)(&format!("***** Iteration #{} *****\n", epoch));
+        (log)(&format!("Loss: {:.6}\n", sum_loss));
+        (log)(&format!("Feature norm: {:.6}\n", feature_norm));
+        (log)("Seconds required for this iteration: 0.000\n");
+
+        if let Some(eval) = holdout.as_deref_mut() {
+            eval(encoder, &mean, log);
+        }
+
+        (log)("\n");
 
         if (sum_loss / n as f64) <= epsilon {
+            (log)("Terminated with the stopping criterion\n\n");
             break;
         }
     }
+
+    (log)("Total seconds required for training: 0.000\n\n");
 
     mean
 }

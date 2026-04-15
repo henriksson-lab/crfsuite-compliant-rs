@@ -2,12 +2,11 @@
 
 A pure Rust implementation of [CRFsuite](http://www.chokkan.org/software/crfsuite/) — Conditional Random Fields for labeling sequential data.
 
-This is a faithful port of Naoaki Okazaki's CRFsuite 0.12, producing **binary-compatible model files** and **identical inference results**. The Rust implementation is **1.1–1.8x faster** than the original C code.
+This is a Rust port of Naoaki Okazaki's CRFsuite 0.12, focused on **binary-compatible model files** and **identical inference results** for the covered 1D CRF paths. The Rust implementation is **1.1-1.8x faster** than the original C code in the benchmarks used by this project.
 
 Based on [chokkan/crfsuite](https://github.com/chokkan/crfsuite) version **0.12.2**, commit [`a2a1547`](https://github.com/chokkan/crfsuite/commit/a2a1547727985e3aff6a35cffe073f57f0223e9d).
 
-Particular has been put into ensuring that this crate gives exactly the same results as the original version, but compiler differences, CPUs, etc, may still
-affect this. Please report any differences!
+Particular care has been put into matching the original version, and `TODO.md` records the completed fidelity audit. Compiler, CPU, or platform C-library differences may still affect some floating-point and `rand()`-dependent paths. Please report any differences.
 
 As this implementation is pure Rust, it is suited for use in webassembly, and you can also use it directly as a library!
 
@@ -15,8 +14,8 @@ As this implementation is pure Rust, it is suited for use in webassembly, and yo
 
 - **1st-order linear-chain CRF** with dyad (state + transition) features
 - **5 training algorithms**: L-BFGS, L2-SGD, Averaged Perceptron, Passive-Aggressive, AROW
-- **Binary-compatible** with C CRFsuite model files — models trained by either implementation can be used by the other
-- **86 tests** including conformance tests that verify identical output against the original C implementation
+- **Binary-compatible** with C CRFsuite model files: models trained by either implementation can be used by the other on covered fixtures
+- Conformance tests compare CLI behavior, model dumps, tagging output, parsing, and selected training paths against the original C implementation
 
 ## Installation
 
@@ -221,7 +220,6 @@ src/
   dump.rs            Human-readable model dump
   quark.rs           String-to-ID dictionary
   vecmath.rs         Vector math with exact SSE2 exp() polynomial
-  params.rs          Algorithm parameter store
   dataset.rs         Dataset with shuffle
   cqdb/              Constant Quark Database (model string lookup)
   crf1d/
@@ -230,7 +228,7 @@ src/
     feature.rs       Feature extraction
     tag.rs           Tagger (inference)
   train/             Training algorithms (lbfgs, l2sgd, ap, pa, arow)
-  bin/crfsuite-rs/   CLI binary
+  bin/crfsuite-rs/   CLI binary, shared CLI metadata, learn data loading/training, and C-compatible parameter metadata
 tests/               Conformance tests vs original C implementation
 ```
 
@@ -240,21 +238,53 @@ tests/               Conformance tests vs original C implementation
 # Run all tests
 cargo test
 
-# Conformance tests against the C binary (optional, requires building crfsuite/)
-# These skip automatically if the C binary is not present.
+# Lint all targets with warnings denied
+cargo clippy --all-targets -- -D warnings
 ```
 
-The conformance test suite verifies against the original C binary:
-- Tag output identical (labels, scores, marginals) across all flag combinations
-- Dump output byte-identical
-- Cross-implementation: models trained by one can be tagged by the other
-- Tested with all 5 training algorithms
+### C/Rust conformance tests
+
+The conformance tests run automatically as part of `cargo test`. Tests that need
+the original C executable skip themselves when the binary is not present at
+`crfsuite/frontend/.libs/crfsuite`.
+
+Build the bundled C implementation before running the full conformance suite:
+
+```bash
+(cd crfsuite && ./autogen.sh && ./configure && make)
+cargo test --test conformance
+```
+
+The test harness sets `LD_LIBRARY_PATH` to `crfsuite/lib/crf/.libs` for C
+commands, so no shell-level environment variable is normally required. If you run
+the C binary manually, use:
+
+```bash
+LD_LIBRARY_PATH=crfsuite/lib/crf/.libs crfsuite/frontend/.libs/crfsuite --help
+```
+
+The conformance suite verifies:
+
+- Tag output identity for labels, scores, probabilities, and marginals.
+- Dump output identity for C and Rust models.
+- Cross-implementation use: selected C-trained models can be tagged by Rust, and selected Rust-trained models can be tagged by C.
+- Parser edge cases for IWA escaping, `@weight`, CRLF input, empty fields, and C-compatible `atoi`/`atof` behavior.
+- CLI failures for selected missing files, malformed models, unknown parameters, and top-level command errors.
 
 ## Compatibility
 
-- Reads and writes the same binary model format as CRFsuite 0.12
-- Models are interchangeable between C and Rust implementations
-- The `vecexp` polynomial approximation is reproduced exactly (bit-identical to the C SSE2 implementation) to ensure numerical consistency
+- Reads and writes the CRFsuite 0.12 binary model format using explicit little-endian encoding.
+- Rust can read C models, and C can read Rust models for the covered model layout and CQDB sections.
+- Minimal deterministic L-BFGS training with `max_iterations=0` is covered by byte-for-byte model equality tests.
+- General training output is treated as functionally compatible when tag/dump output matches, because floating-point ordering and trainer details can affect byte layout.
+- The `vecexp` polynomial approximation is reproduced exactly for the covered SSE2 fixture to preserve inference consistency.
+
+### Known deviations from C
+
+- A final non-empty IWA line without a trailing newline is handled gracefully instead of preserving C's hang/wait behavior.
+- CLI chrome is intentionally quieter in Rust. The conformance tests normalize C-only banners and training progress preambles when the semantic result is stderr, exit status, or parameter output.
+- `learn -g` and online trainer shuffles call the platform C `srand(0)`/`rand()` stream for compatibility with the bundled C build on the same platform.
+- Top-level help, subcommand help, and selected command errors are matched by conformance tests, while broader C banner/progress chrome remains intentionally quieter.
 
 ## License
 

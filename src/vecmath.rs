@@ -244,6 +244,27 @@ mod tests {
     }
 
     #[test]
+    fn test_fast_exp_matches_c_sse_bits() {
+        let mut values = [-1000.0, MINLOG, -10.0, -1.0, 0.0, 1.0, 10.0, MAXLOG];
+        let expected = [
+            0x0000000000000000,
+            0x0000000000000000,
+            0x3f07cd79b5647c9b,
+            0x3fd78b56362cef38,
+            0x3ff0000000000000,
+            0x4005bf0a8b14576a,
+            0x40d5829dcf950560,
+            0x7ff0000000000000,
+        ];
+
+        vecexp(&mut values);
+
+        for (value, bits) in values.iter().zip(expected.iter()) {
+            assert_eq!(value.to_bits(), *bits);
+        }
+    }
+
+    #[test]
     fn test_vecexp_range() {
         // Test a range of values and ensure results are reasonable
         let mut values: Vec<f64> = (-100..=100).map(|i| i as f64 * 0.1).collect();

@@ -457,4 +457,63 @@ mod tests {
             "viterbi score {} != path score {}", viterbi_score, path_score
         );
     }
+
+    #[test]
+    fn test_single_item_forward_backward_matches_c_scaling() {
+        let l = 3;
+        let mut ctx = Crf1dContext::new(CTXF_VITERBI | CTXF_MARGINALS, l, 1);
+        ctx.set_num_items(1);
+        ctx.state[0] = -1.0;
+        ctx.state[1] = 0.0;
+        ctx.state[2] = 1.0;
+
+        ctx.exp_state();
+        let z: f64 = ctx.exp_state[..l].iter().sum();
+        ctx.alpha_score();
+        ctx.beta_score();
+        ctx.marginals();
+
+        assert_eq!(ctx.scale_factor[0], 1.0 / z);
+        assert_eq!(ctx.beta_score, vec![ctx.scale_factor[0]; l]);
+        for j in 0..l {
+            assert!((ctx.mexp_state[j] - ctx.alpha_score[j]).abs() <= f64::EPSILON);
+        }
+        assert!(ctx.mexp_trans.iter().all(|v| *v == 0.0));
+        assert!((ctx.log_norm - z.ln()).abs() <= f64::EPSILON);
+    }
+
+    #[test]
+    fn test_forward_backward_all_underflow_matches_c_scaling() {
+        let l = 2;
+        let mut ctx = Crf1dContext::new(CTXF_VITERBI | CTXF_MARGINALS, l, 1);
+        ctx.set_num_items(1);
+        ctx.state[0] = -1000.0;
+        ctx.state[1] = -1000.0;
+
+        ctx.exp_state();
+        ctx.alpha_score();
+        ctx.beta_score();
+        ctx.marginals();
+
+        assert_eq!(ctx.exp_state[..l], [0.0, 0.0]);
+        assert_eq!(ctx.scale_factor[0], 1.0);
+        assert_eq!(ctx.alpha_score[..l], [0.0, 0.0]);
+        assert_eq!(ctx.beta_score[..l], [1.0, 1.0]);
+        assert_eq!(ctx.mexp_state[..l], [0.0, 0.0]);
+        assert_eq!(ctx.log_norm, -0.0);
+    }
+
+    #[test]
+    fn test_viterbi_tie_breaks_to_lowest_label_like_c() {
+        let l = 3;
+        let t = 2;
+        let mut ctx = Crf1dContext::new(CTXF_VITERBI, l, t);
+        ctx.set_num_items(t);
+
+        let mut labels = vec![-1; t];
+        let score = ctx.viterbi(&mut labels);
+
+        assert_eq!(score, 0.0);
+        assert_eq!(labels, vec![0, 0]);
+    }
 }

@@ -5,7 +5,6 @@ pub mod dataset;
 pub mod dump;
 pub mod model;
 pub mod model_writer;
-pub mod params;
 pub mod quark;
 pub mod train;
 pub mod types;

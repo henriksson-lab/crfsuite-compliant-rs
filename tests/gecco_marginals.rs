@@ -40,9 +40,26 @@ fn test_data(name: &str) -> PathBuf {
     project_root().join("test_data").join(name)
 }
 
-fn gecco_model_bytes() -> Vec<u8> {
-    std::fs::read(test_data("gecco_model.crfsuite"))
-        .expect("test_data/gecco_model.crfsuite missing – copy from GECCO")
+fn gecco_model_path() -> PathBuf {
+    test_data("gecco_model.crfsuite")
+}
+
+fn gecco_model_bytes() -> Option<Vec<u8>> {
+    let path = gecco_model_path();
+    if !path.exists() {
+        eprintln!("SKIP: test_data/gecco_model.crfsuite missing");
+        return None;
+    }
+    Some(std::fs::read(path).expect("read GECCO model"))
+}
+
+fn gecco_iwa_path(name: &str) -> Option<PathBuf> {
+    let path = test_data(name);
+    if !path.exists() {
+        eprintln!("SKIP: {name} missing");
+        return None;
+    }
+    Some(path)
 }
 
 /// Build an Instance from a list of feature-name lists, the way gecco-rs does.
@@ -273,7 +290,9 @@ fn assert_marginals_close(actual: &[f64], expected: &[f64], label: &str) {
 
 #[test]
 fn gecco_library_marginals_window_start() {
-    let data = gecco_model_bytes();
+    let Some(data) = gecco_model_bytes() else {
+        return;
+    };
     let model = ModelReader::open(&data).unwrap();
     let actual = library_marginals(&model, &window_start_features());
     assert_marginals_close(&actual, &window_start_expected(), "window_start");
@@ -281,7 +300,9 @@ fn gecco_library_marginals_window_start() {
 
 #[test]
 fn gecco_library_marginals_window_cluster() {
-    let data = gecco_model_bytes();
+    let Some(data) = gecco_model_bytes() else {
+        return;
+    };
     let model = ModelReader::open(&data).unwrap();
     let actual = library_marginals(&model, &window_cluster_features());
     assert_marginals_close(&actual, &window_cluster_expected(), "window_cluster");
@@ -289,7 +310,9 @@ fn gecco_library_marginals_window_cluster() {
 
 #[test]
 fn gecco_library_marginals_window_mid() {
-    let data = gecco_model_bytes();
+    let Some(data) = gecco_model_bytes() else {
+        return;
+    };
     let model = ModelReader::open(&data).unwrap();
     let actual = library_marginals(&model, &window_mid_features());
     assert_marginals_close(&actual, &window_mid_expected(), "window_mid");
@@ -327,12 +350,19 @@ fn gecco_cli_marginals_vs_c() {
     let rs_bin = rust_bin();
     assert!(rs_bin.exists(), "Rust binary missing – run `cargo build`");
 
-    let model = test_data("gecco_model.crfsuite").to_str().unwrap().to_string();
+    let model_path = gecco_model_path();
+    if !model_path.exists() {
+        eprintln!("SKIP: test_data/gecco_model.crfsuite missing");
+        return;
+    }
+    let model = model_path.to_str().unwrap().to_string();
     let lib_path = project_root().join("crfsuite/lib/crf/.libs");
 
     for window_name in ["window_start", "window_cluster", "window_mid"] {
-        let iwa = test_data(&format!("gecco_iwa_{window_name}.txt"))
-            .to_str().unwrap().to_string();
+        let Some(iwa_path) = gecco_iwa_path(&format!("gecco_iwa_{window_name}.txt")) else {
+            return;
+        };
+        let iwa = iwa_path.to_str().unwrap().to_string();
 
         let c_out = run_cli(&c_bin, &model, &iwa, Some(("LD_LIBRARY_PATH", lib_path.clone())));
         let rs_out = run_cli(&rs_bin, &model, &iwa, None);
@@ -357,7 +387,11 @@ fn gecco_library_vs_cli_marginals() {
         return;
     }
 
-    let model_path = test_data("gecco_model.crfsuite");
+    let model_path = gecco_model_path();
+    if !model_path.exists() {
+        eprintln!("SKIP: test_data/gecco_model.crfsuite missing");
+        return;
+    }
     let model_str = model_path.to_str().unwrap().to_string();
     let data = std::fs::read(&model_path).unwrap();
     let model = ModelReader::open(&data).unwrap();
@@ -373,8 +407,10 @@ fn gecco_library_vs_cli_marginals() {
         let lib_marginals = library_marginals(&model, features);
 
         // CLI
-        let iwa = test_data(&format!("gecco_iwa_{name}.txt"))
-            .to_str().unwrap().to_string();
+        let Some(iwa_path) = gecco_iwa_path(&format!("gecco_iwa_{name}.txt")) else {
+            return;
+        };
+        let iwa = iwa_path.to_str().unwrap().to_string();
         let cli_out = run_cli(&rs_bin, &model_str, &iwa, None);
         let cli_marginals = parse_cli_marginals(&cli_out);
 
