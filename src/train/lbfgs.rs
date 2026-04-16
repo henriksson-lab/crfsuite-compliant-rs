@@ -23,6 +23,7 @@ pub fn train_lbfgs(
 ) -> Vec<f64> {
     let k = encoder.num_features;
     let mut w = vec![0.0f64; k];
+    let encoded_instances = encoder.encode_instances(instances);
     let ls = match linesearch {
         "Backtracking" => LineSearch::BacktrackingWolfe,
         "StrongBacktracking" => LineSearch::BacktrackingStrongWolfe,
@@ -49,7 +50,7 @@ pub fn train_lbfgs(
 
     // Evaluate callback: objective + gradients
     let mut evaluate = |w: &[f64], g: &mut [f64], _step: f64| -> f64 {
-        let f = encoder.objective_and_gradients_batch(instances, w, g);
+        let f = encoder.objective_and_gradients_batch_encoded(&encoded_instances, w, g);
 
         add_l2_regularization(f, g, w, c2)
     };

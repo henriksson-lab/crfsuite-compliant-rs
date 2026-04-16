@@ -18,6 +18,7 @@ pub fn train_arow(
     let n = instances.len();
     let mut mean = vec![0.0f64; k];
     let mut cov = vec![variance; k];
+    let mut encoded_instances = encoder.encode_instances(instances);
 
     // Pre-allocate reusable buffers
     let max_t = instances.iter().map(|i| i.num_items()).max().unwrap_or(0);
@@ -25,6 +26,7 @@ pub fn train_arow(
     let mut delta = vec![0.0f64; k];
     let mut used = vec![false; k];
     let mut active_indices: Vec<usize> = Vec::with_capacity(k / 4);
+    let mut transitions_dirty = true;
 
     (log)("Adaptive Regularization of Weights (AROW)\n");
     (log)(&format!("variance: {:.6}\n", variance));
@@ -36,15 +38,19 @@ pub fn train_arow(
         for i in 0..n {
             let j = crate::rng::rand_int() % n;
             instances.swap(i, j);
+            encoded_instances.swap(i, j);
         }
 
         let mut sum_loss = 0.0f64;
 
-        for inst in instances.iter() {
-            encoder.set_weights(&mean, 1.0);
-            encoder.set_instance(inst);
+        for inst in &encoded_instances {
+            if transitions_dirty {
+                encoder.set_transitions_from_weights(&mean, 1.0);
+                transitions_dirty = false;
+            }
+            encoder.set_encoded_instance_from_weights(inst, &mean, 1.0);
 
-            let t_max = inst.num_items();
+            let t_max = inst.items.len();
             let sv = encoder.viterbi(&mut pred[..t_max]);
 
             if pred[..t_max] != inst.labels[..] {
@@ -56,7 +62,7 @@ pub fn train_arow(
 
                 // Compute delta = F(y) - F(y_pred), track active indices
                 active_indices.clear();
-                encoder.features_on_path(inst, &inst.labels, |fid, val| {
+                encoder.features_on_path_encoded(inst, &inst.labels, |fid, val| {
                     let idx = fid as usize;
                     if !used[idx] {
                         used[idx] = true;
@@ -64,7 +70,7 @@ pub fn train_arow(
                     }
                     delta[idx] += inst.weight * val;
                 });
-                encoder.features_on_path(inst, &pred[..t_max], |fid, val| {
+                encoder.features_on_path_encoded(inst, &pred[..t_max], |fid, val| {
                     let idx = fid as usize;
                     if !used[idx] {
                         used[idx] = true;
@@ -96,6 +102,7 @@ pub fn train_arow(
                     used[i] = false;
                 }
 
+                transitions_dirty = true;
                 sum_loss += cost * inst.weight;
             }
         }
@@ -108,6 +115,7 @@ pub fn train_arow(
 
         if let Some(eval) = holdout.as_deref_mut() {
             eval(encoder, &mean, log);
+            transitions_dirty = true;
         }
 
         (log)("\n");

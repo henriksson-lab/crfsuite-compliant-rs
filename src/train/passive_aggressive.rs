@@ -22,12 +22,14 @@ pub fn train_passive_aggressive(
     let mut ws = vec![0.0f64; k];
     let mut wa = vec![0.0f64; k];
     let mut u = 1u64;
+    let mut encoded_instances = encoder.encode_instances(instances);
 
     let max_t = instances.iter().map(|i| i.num_items()).max().unwrap_or(0);
     let mut pred = vec![0i32; max_t];
     let mut delta = vec![0.0f64; k];
     let mut used = vec![false; k];
     let mut active_indices: Vec<usize> = Vec::with_capacity(k / 4);
+    let mut transitions_dirty = true;
 
     (log)("Passive Aggressive\n");
     (log)(&format!("type: {}\n", pa_type));
@@ -41,15 +43,19 @@ pub fn train_passive_aggressive(
         for i in 0..n {
             let j = crate::rng::rand_int() % n;
             instances.swap(i, j);
+            encoded_instances.swap(i, j);
         }
 
         let mut sum_loss = 0.0f64;
 
-        for inst in instances.iter() {
-            encoder.set_weights(&w, 1.0);
-            encoder.set_instance(inst);
+        for inst in &encoded_instances {
+            if transitions_dirty {
+                encoder.set_transitions_from_weights(&w, 1.0);
+                transitions_dirty = false;
+            }
+            encoder.set_encoded_instance_from_weights(inst, &w, 1.0);
 
-            let t_max = inst.num_items();
+            let t_max = inst.items.len();
             let sv = encoder.viterbi(&mut pred[..t_max]);
 
             if pred[..t_max] != inst.labels[..] {
@@ -64,7 +70,7 @@ pub fn train_passive_aggressive(
                 };
 
                 active_indices.clear();
-                encoder.features_on_path(inst, &inst.labels, |fid, val| {
+                encoder.features_on_path_encoded(inst, &inst.labels, |fid, val| {
                     let idx = fid as usize;
                     if !used[idx] {
                         used[idx] = true;
@@ -72,7 +78,7 @@ pub fn train_passive_aggressive(
                     }
                     delta[idx] += val;
                 });
-                encoder.features_on_path(inst, &pred[..t_max], |fid, val| {
+                encoder.features_on_path_encoded(inst, &pred[..t_max], |fid, val| {
                     let idx = fid as usize;
                     if !used[idx] {
                         used[idx] = true;
@@ -106,6 +112,7 @@ pub fn train_passive_aggressive(
                     used[i] = false;
                 }
 
+                transitions_dirty = true;
                 sum_loss += cost * inst.weight;
             }
 
@@ -129,6 +136,7 @@ pub fn train_passive_aggressive(
 
         if let Some(eval) = holdout.as_deref_mut() {
             eval(encoder, &wa, log);
+            transitions_dirty = true;
         }
 
         (log)("\n");

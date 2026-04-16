@@ -2,7 +2,7 @@
 
 use std::os::raw::c_int;
 
-use crate::crf1d::encode::Crf1dEncoder;
+use crate::crf1d::encode::{Crf1dEncoder, EncodedInstance};
 use crate::train::LogFn;
 use crate::types::Instance;
 
@@ -33,6 +33,7 @@ pub fn train_l2sgd(
     let lambda = 2.0 * options.c2 / n as f64;
     let mut w = vec![0.0f64; k];
     let mut perm: Vec<usize> = (0..n).collect();
+    let encoded_instances = encoder.encode_instances(instances);
 
     (log)("Stochastic Gradient Descent (SGD)\n");
     (log)(&format!("c2: {:.6}\n", options.c2));
@@ -40,10 +41,18 @@ pub fn train_l2sgd(
     (log)(&format!("period: {}\n", options.period));
     (log)(&format!("delta: {:.6}\n\n", options.delta));
 
-    let t0 = l2sgd_calibration(encoder, instances, &mut perm, &mut w, lambda, options, log);
+    let t0 = l2sgd_calibration(
+        encoder,
+        &encoded_instances,
+        &mut perm,
+        &mut w,
+        lambda,
+        options,
+        log,
+    );
     let loss = l2sgd_epochs(
         encoder,
-        instances,
+        &encoded_instances,
         &mut perm,
         &mut w,
         n,
@@ -65,7 +74,7 @@ pub fn train_l2sgd(
 #[allow(clippy::too_many_arguments)]
 fn l2sgd_epochs(
     encoder: &mut Crf1dEncoder,
-    instances: &[Instance],
+    instances: &[EncodedInstance],
     perm: &mut [usize],
     w: &mut [f64],
     n: usize,
@@ -101,7 +110,7 @@ fn l2sgd_epochs(
             let eta = 1.0 / (lambda * (t0 + t));
             decay *= 1.0 - eta * lambda;
             let gain = eta / decay;
-            loss = encoder.objective_and_gradients_online(&instances[idx], w, decay, gain);
+            loss = encoder.objective_and_gradients_online_encoded(&instances[idx], w, decay, gain);
             sum_loss += loss;
             t += 1.0;
         }
@@ -167,7 +176,7 @@ fn l2sgd_epochs(
 
 fn l2sgd_calibration(
     encoder: &mut Crf1dEncoder,
-    instances: &[Instance],
+    instances: &[EncodedInstance],
     perm: &mut [usize],
     w: &mut [f64],
     lambda: f64,
@@ -202,7 +211,7 @@ fn l2sgd_calibration(
 
     let mut init_loss = 0.0;
     for &idx in perm.iter().take(samples) {
-        init_loss += encoder.objective_and_gradients_online(&instances[idx], w, 1.0, 0.0);
+        init_loss += encoder.objective_and_gradients_online_encoded(&instances[idx], w, 1.0, 0.0);
     }
     (log)(&format!("Initial loss: {:.6}\n", init_loss));
 

@@ -19,6 +19,21 @@ pub struct Crf1dEncoder {
     scale: f64,
     // Precomputed feature dst for fast indexing (avoids struct field access in hot loops)
     feature_dst: Vec<u32>,
+    transition_fid: Vec<Option<u32>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EncodedItemFeature {
+    pub fid: u32,
+    pub dst: u32,
+    pub value: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct EncodedInstance {
+    pub items: Vec<Vec<EncodedItemFeature>>,
+    pub labels: Vec<i32>,
+    pub weight: f64,
 }
 
 impl Crf1dEncoder {
@@ -49,6 +64,18 @@ impl Crf1dEncoder {
 
         // Precompute feature dst array
         let feature_dst: Vec<u32> = features.iter().map(|f| f.dst as u32).collect();
+        let mut transition_fid = vec![None; num_labels * num_labels];
+        for (fid, feature) in features.iter().enumerate() {
+            if feature.ftype == feature::FT_TRANS
+                && 0 <= feature.src
+                && 0 <= feature.dst
+                && (feature.src as usize) < num_labels
+                && (feature.dst as usize) < num_labels
+            {
+                transition_fid[feature.src as usize * num_labels + feature.dst as usize] =
+                    Some(fid as u32);
+            }
+        }
 
         Crf1dEncoder {
             num_labels,
@@ -61,6 +88,38 @@ impl Crf1dEncoder {
             weights: Vec::new(),
             scale: 1.0,
             feature_dst,
+            transition_fid,
+        }
+    }
+
+    /// Encode instances for trainer hot loops after the feature set is fixed.
+    pub fn encode_instances(&self, instances: &[Instance]) -> Vec<EncodedInstance> {
+        instances.iter().map(|inst| self.encode_instance(inst)).collect()
+    }
+
+    fn encode_instance(&self, inst: &Instance) -> EncodedInstance {
+        let mut items = Vec::with_capacity(inst.num_items());
+        for item in &inst.items {
+            let mut encoded = Vec::new();
+            for attr in &item.contents {
+                let aid = attr.aid as usize;
+                if aid >= self.attr_refs.len() {
+                    continue;
+                }
+                for &fid in &self.attr_refs[aid].fids {
+                    encoded.push(EncodedItemFeature {
+                        fid: fid as u32,
+                        dst: self.feature_dst[fid as usize],
+                        value: attr.value,
+                    });
+                }
+            }
+            items.push(encoded);
+        }
+        EncodedInstance {
+            items,
+            labels: inst.labels.clone(),
+            weight: inst.weight,
         }
     }
 
@@ -72,6 +131,40 @@ impl Crf1dEncoder {
         self.scale = scale;
         self.ctx.reset(RF_TRANS);
         self.transition_score_from_stored();
+    }
+
+    /// Set transition and state scores for one instance without copying weights.
+    pub fn set_weights_and_instance(&mut self, inst: &Instance, w: &[f64], scale: f64) {
+        self.ctx.reset(RF_TRANS);
+        self.transition_score(w, scale);
+        self.ctx.set_num_items(inst.num_items());
+        self.ctx.reset(RF_STATE);
+        self.state_score(inst, w, scale);
+    }
+
+    /// Set transition scores from borrowed weights without copying them.
+    pub fn set_transitions_from_weights(&mut self, w: &[f64], scale: f64) {
+        self.ctx.reset(RF_TRANS);
+        self.transition_score(w, scale);
+    }
+
+    /// Set one instance's state scores from borrowed weights without copying them.
+    pub fn set_instance_from_weights(&mut self, inst: &Instance, w: &[f64], scale: f64) {
+        self.ctx.set_num_items(inst.num_items());
+        self.ctx.reset(RF_STATE);
+        self.state_score(inst, w, scale);
+    }
+
+    /// Set one pre-encoded instance's state scores from borrowed weights.
+    pub fn set_encoded_instance_from_weights(
+        &mut self,
+        inst: &EncodedInstance,
+        w: &[f64],
+        scale: f64,
+    ) {
+        self.ctx.set_num_items(inst.items.len());
+        self.ctx.reset(RF_STATE);
+        self.state_score_encoded(inst, w, scale);
     }
 
     /// Set an instance and compute state scores.
@@ -130,6 +223,17 @@ impl Crf1dEncoder {
         }
     }
 
+    fn state_score_encoded(&mut self, inst: &EncodedInstance, w: &[f64], scale: f64) {
+        let l = self.num_labels;
+        for (t, item) in inst.items.iter().enumerate() {
+            let state_start = t * l;
+            for feature in item {
+                self.ctx.state[state_start + feature.dst as usize] +=
+                    w[feature.fid as usize] * feature.value * scale;
+            }
+        }
+    }
+
     /// Compute transition scores from feature weights (instance-independent).
     fn transition_score(&mut self, w: &[f64], scale: f64) {
         let l = self.num_labels;
@@ -173,6 +277,26 @@ impl Crf1dEncoder {
         }
     }
 
+    fn model_expectation_encoded(&self, inst: &EncodedInstance, g: &mut [f64], weight: f64) {
+        let l = self.num_labels;
+
+        for (t, item) in inst.items.iter().enumerate() {
+            let mexp_start = t * l;
+            for feature in item {
+                g[feature.fid as usize] +=
+                    self.ctx.mexp_state[mexp_start + feature.dst as usize] * feature.value * weight;
+            }
+        }
+
+        for i in 0..l {
+            let mexp_start = i * l;
+            for &fid in &self.label_refs[i].fids {
+                let dst = self.feature_dst[fid as usize] as usize;
+                g[fid as usize] += self.ctx.mexp_trans[mexp_start + dst] * weight;
+            }
+        }
+    }
+
     /// Compute negative log-likelihood and gradients for the entire dataset.
     ///
     /// Returns the objective (negative log-likelihood).
@@ -180,6 +304,16 @@ impl Crf1dEncoder {
     pub fn objective_and_gradients_batch(
         &mut self,
         instances: &[Instance],
+        w: &[f64],
+        g: &mut [f64],
+    ) -> f64 {
+        let encoded = self.encode_instances(instances);
+        self.objective_and_gradients_batch_encoded(&encoded, w, g)
+    }
+
+    pub fn objective_and_gradients_batch_encoded(
+        &mut self,
+        instances: &[EncodedInstance],
         w: &[f64],
         g: &mut [f64],
     ) -> f64 {
@@ -199,13 +333,13 @@ impl Crf1dEncoder {
         let mut logl = 0.0f64;
 
         for inst in instances {
-            let t_max = inst.num_items();
+            let t_max = inst.items.len();
             if t_max == 0 { continue; }
 
             // Set up instance
             self.ctx.set_num_items(t_max);
             self.ctx.reset(RF_STATE);
-            self.state_score(inst, w, 1.0);
+            self.state_score_encoded(inst, w, 1.0);
 
             // Forward-backward
             self.ctx.exp_state();
@@ -221,7 +355,7 @@ impl Crf1dEncoder {
             logl += logp * inst.weight;
 
             // Accumulate model expectations
-            self.model_expectation(inst, g, inst.weight);
+            self.model_expectation_encoded(inst, g, inst.weight);
         }
 
         -logl // negative log-likelihood (we minimize this)
@@ -237,8 +371,7 @@ impl Crf1dEncoder {
         scale: f64,
         gain: f64,
     ) -> f64 {
-        self.set_weights(w, scale);
-        self.set_instance(inst);
+        self.set_weights_and_instance(inst, w, scale);
         self.ctx.exp_state();
         self.ctx.exp_transition();
         self.ctx.alpha_score();
@@ -248,6 +381,30 @@ impl Crf1dEncoder {
         let scaled_gain = gain * inst.weight;
         self.observation_expectation(inst, w, scaled_gain);
         self.model_expectation(inst, w, -scaled_gain);
+        (-self.ctx.score(&inst.labels) + self.ctx.lognorm()) * inst.weight
+    }
+
+    pub fn objective_and_gradients_online_encoded(
+        &mut self,
+        inst: &EncodedInstance,
+        w: &mut [f64],
+        scale: f64,
+        gain: f64,
+    ) -> f64 {
+        self.ctx.reset(RF_TRANS);
+        self.transition_score(w, scale);
+        self.set_encoded_instance_from_weights(inst, w, scale);
+        self.ctx.exp_state();
+        self.ctx.exp_transition();
+        self.ctx.alpha_score();
+        self.ctx.beta_score();
+        self.ctx.marginals();
+
+        let scaled_gain = gain * inst.weight;
+        self.features_on_path_encoded(inst, &inst.labels, |fid, val| {
+            w[fid as usize] += val * scaled_gain;
+        });
+        self.model_expectation_encoded(inst, w, -scaled_gain);
         (-self.ctx.score(&inst.labels) + self.ctx.lognorm()) * inst.weight
     }
 
@@ -334,6 +491,38 @@ impl Crf1dEncoder {
                         if f.dst as usize == label {
                             callback(fid, 1.0);
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Enumerate features on a path using a pre-encoded instance.
+    pub fn features_on_path_encoded<F>(
+        &self,
+        inst: &EncodedInstance,
+        path: &[i32],
+        mut callback: F,
+    )
+    where
+        F: FnMut(i32, f64),
+    {
+        let l = self.num_labels;
+        for (t, item) in inst.items.iter().enumerate() {
+            let label = path[t] as usize;
+
+            for feature in item {
+                if feature.dst as usize == label {
+                    callback(feature.fid as i32, feature.value);
+                }
+            }
+
+            if t > 0 {
+                let prev_label = path[t - 1] as usize;
+                if prev_label < l {
+                    let index = prev_label * l + label;
+                    if let Some(fid) = self.transition_fid[index] {
+                        callback(fid as i32, 1.0);
                     }
                 }
             }
