@@ -1,0 +1,301 @@
+# Mapping for code-complexity-comparator between the original CRFSuite C code
+# in crfsuite/ and this Rust translation.  Path/class pins are intentional:
+# CRFSuite has many same-named helpers, and Rust has several same-named methods.
+
+[[entries]]
+rust = "train_lbfgs"
+rust_path = "src/train/lbfgs.rs"
+other = "crfsuite_train_lbfgs"
+other_path = "crfsuite/lib/crf/src/train_lbfgs.c"
+
+[[entries]]
+rust = "train_l2sgd"
+rust_path = "src/train/l2sgd.rs"
+other = "crfsuite_train_l2sgd"
+other_path = "crfsuite/lib/crf/src/train_l2sgd.c"
+
+[[entries]]
+rust = "l2sgd_epochs"
+rust_path = "src/train/l2sgd.rs"
+other = "l2sgd"
+other_path = "crfsuite/lib/crf/src/train_l2sgd.c"
+
+[[entries]]
+rust = "l2sgd_calibration"
+rust_path = "src/train/l2sgd.rs"
+other = "l2sgd_calibration"
+other_path = "crfsuite/lib/crf/src/train_l2sgd.c"
+
+[[entries]]
+rust = "train_averaged_perceptron"
+rust_path = "src/train/averaged_perceptron.rs"
+other = "crfsuite_train_averaged_perceptron"
+other_path = "crfsuite/lib/crf/src/train_averaged_perceptron.c"
+
+[[entries]]
+rust = "train_passive_aggressive"
+rust_path = "src/train/passive_aggressive.rs"
+other = "crfsuite_train_passive_aggressive"
+other_path = "crfsuite/lib/crf/src/train_passive_aggressive.c"
+
+[[entries]]
+rust = "train_arow"
+rust_path = "src/train/arow.rs"
+other = "crfsuite_train_arow"
+other_path = "crfsuite/lib/crf/src/train_arow.c"
+
+[[entries]]
+rust = "generate_features"
+rust_path = "src/crf1d/feature.rs"
+other = "crf1df_generate"
+other_path = "crfsuite/lib/crf/src/crf1d_feature.c"
+
+[[entries]]
+rust = "init_references"
+rust_path = "src/crf1d/feature.rs"
+other = "crf1df_init_references"
+other_path = "crfsuite/lib/crf/src/crf1d_feature.c"
+
+[[entries]]
+rust = "new"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_new"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "set_num_items"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_set_num_items"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "reset"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_reset"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "exp_state"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_exp_state"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "exp_transition"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_exp_transition"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "alpha_score"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_alpha_score"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "beta_score"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_beta_score"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "marginals"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_marginals"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "marginal_point"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_marginal_point"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "marginal_path"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_marginal_path"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "score"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_score"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "viterbi"
+rust_path = "src/crf1d/context.rs"
+rust_class = "Crf1dContext"
+other = "crf1dc_viterbi"
+other_path = "crfsuite/lib/crf/src/crf1d_context.c"
+
+[[entries]]
+rust = "new"
+rust_path = "src/crf1d/encode.rs"
+rust_class = "Crf1dEncoder"
+other = "crf1de_create_instance"
+other_path = "crfsuite/lib/crf/src/crfsuite_train.c"
+
+[[entries]]
+rust = "state_score"
+rust_path = "src/crf1d/encode.rs"
+rust_class = "Crf1dEncoder"
+other = "crf1de_state_score"
+other_path = "crfsuite/lib/crf/src/crf1d_encode.c"
+
+[[entries]]
+rust = "transition_score"
+rust_path = "src/crf1d/encode.rs"
+rust_class = "Crf1dEncoder"
+other = "crf1de_transition_score"
+other_path = "crfsuite/lib/crf/src/crf1d_encode.c"
+
+[[entries]]
+rust = "features_on_path"
+rust_path = "src/crf1d/encode.rs"
+rust_class = "Crf1dEncoder"
+other = "crf1de_features_on_path"
+other_path = "crfsuite/lib/crf/src/crf1d_encode.c"
+
+[[entries]]
+rust = "observation_expectation"
+rust_path = "src/crf1d/encode.rs"
+rust_class = "Crf1dEncoder"
+other = "crf1de_observation_expectation"
+other_path = "crfsuite/lib/crf/src/crf1d_encode.c"
+
+[[entries]]
+rust = "model_expectation"
+rust_path = "src/crf1d/encode.rs"
+rust_class = "Crf1dEncoder"
+other = "crf1de_model_expectation"
+other_path = "crfsuite/lib/crf/src/crf1d_encode.c"
+
+[[entries]]
+rust = "write_model"
+rust_path = "src/model_writer.rs"
+other = "crf1de_save_model"
+other_path = "crfsuite/lib/crf/src/crf1d_encode.c"
+
+[[entries]]
+rust = "open"
+rust_path = "src/model.rs"
+rust_class = "Model"
+other = "crf1dm_new_impl"
+other_path = "crfsuite/lib/crf/src/crf1d_model.c"
+
+[[entries]]
+rust = "dump_model"
+rust_path = "src/dump.rs"
+other = "crf1dm_dump"
+other_path = "crfsuite/lib/crf/src/crf1d_model.c"
+
+[[entries]]
+rust = "new"
+rust_path = "src/crf1d/tag.rs"
+rust_class = "Crf1dTagger"
+other = "crf1dt_new"
+other_path = "crfsuite/lib/crf/src/crf1d_tag.c"
+
+[[entries]]
+rust = "set_state_scores"
+rust_path = "src/crf1d/tag.rs"
+rust_class = "Crf1dTagger"
+other = "crf1dt_state_score"
+other_path = "crfsuite/lib/crf/src/crf1d_tag.c"
+
+[[entries]]
+rust = "set_transition_scores"
+rust_path = "src/crf1d/tag.rs"
+rust_class = "Crf1dTagger"
+other = "crf1dt_transition_score"
+other_path = "crfsuite/lib/crf/src/crf1d_tag.c"
+
+[[entries]]
+rust = "viterbi"
+rust_path = "src/crf1d/tag.rs"
+rust_class = "Crf1dTagger"
+other = "tagger_viterbi"
+other_path = "crfsuite/lib/crf/src/crf1d_tag.c"
+
+[[entries]]
+rust = "score"
+rust_path = "src/crf1d/tag.rs"
+rust_class = "Crf1dTagger"
+other = "tagger_score"
+other_path = "crfsuite/lib/crf/src/crf1d_tag.c"
+
+[[entries]]
+rust = "lognorm"
+rust_path = "src/crf1d/tag.rs"
+rust_class = "Crf1dTagger"
+other = "tagger_lognorm"
+other_path = "crfsuite/lib/crf/src/crf1d_tag.c"
+
+[[entries]]
+rust = "marginal_point"
+rust_path = "src/crf1d/tag.rs"
+rust_class = "Crf1dTagger"
+other = "tagger_marginal_point"
+other_path = "crfsuite/lib/crf/src/crf1d_tag.c"
+
+[[entries]]
+rust = "marginal_path"
+rust_path = "src/crf1d/tag.rs"
+rust_class = "Crf1dTagger"
+other = "tagger_marginal_path"
+other_path = "crfsuite/lib/crf/src/crf1d_tag.c"
+
+[[entries]]
+rust = "run_learn"
+rust_path = "src/bin/crfsuite-rs/learn.rs"
+other = "main_learn"
+other_path = "crfsuite/frontend/learn.c"
+
+[[entries]]
+rust = "run_tag"
+rust_path = "src/bin/crfsuite-rs/tag.rs"
+other = "main_tag"
+other_path = "crfsuite/frontend/tag.c"
+
+[[entries]]
+rust = "run_dump"
+rust_path = "src/bin/crfsuite-rs/cli_dump.rs"
+other = "main_dump"
+other_path = "crfsuite/frontend/dump.c"
+
+[[entries]]
+rust = "read"
+rust_path = "src/bin/crfsuite-rs/iwa.rs"
+rust_class = "IwaReader"
+other = "iwa_read"
+other_path = "crfsuite/frontend/iwa.c"
+
+[[entries]]
+rust = "parse_line"
+rust_path = "src/bin/crfsuite-rs/iwa.rs"
+other = "read_item"
+other_path = "crfsuite/frontend/iwa.c"
+
+[[entries]]
+rust = "parse_field"
+rust_path = "src/bin/crfsuite-rs/iwa.rs"
+other = "read_field_unescaped"
+other_path = "crfsuite/frontend/iwa.c"
+
+[[entries]]
+rust = "handle_c_top_level_options"
+rust_path = "src/bin/crfsuite-rs/main.rs"
+other = "main"
+other_path = "crfsuite/frontend/main.c"
