@@ -334,6 +334,16 @@ impl Crf1dContext {
         let t_max = self.num_items;
         let l = self.num_labels;
 
+        #[cfg(feature = "tracehash")]
+        let mut th = {
+            let mut th = tracehash::th_call!("crf1dc_viterbi");
+            th.input_usize(t_max);
+            th.input_usize(l);
+            th.input_value(&self.state[..t_max * l]);
+            th.input_value(&self.trans[..l * l]);
+            th
+        };
+
         // t=0: alpha[0][j] = state[0][j]
         {
             let state0 = &self.state[..l];
@@ -377,6 +387,13 @@ impl Crf1dContext {
         for t in (0..t_max - 1).rev() {
             let back_start = (t + 1) * l;
             labels[t] = self.backward_edge[back_start + labels[t + 1] as usize];
+        }
+
+        #[cfg(feature = "tracehash")]
+        {
+            th.output_value(&labels[..t_max]);
+            th.output_f64(max_score);
+            th.finish();
         }
 
         max_score

@@ -219,22 +219,37 @@ LABEL3	attr1:value1
 ## Performance
 
 These are single-run `bench.sh` timings on `test_data/bench_10k.txt`
-(10,000 sequences, ~115k items), comparing `target/release/crfsuite-rs`
-against `crfsuite/frontend/.libs/crfsuite`. Treat them as smoke-test
-measurements, not a portable benchmark claim.
+(8.3 MB, 125,183 lines, 10,000 sequences, ~115k items), comparing
+`target/release/crfsuite-rs` against `crfsuite/frontend/.libs/crfsuite`.
+Treat them as smoke-test measurements, not a portable benchmark claim.
 
 | Task | C (original) | Rust | Result |
 |---|---:|---:|---|
-| Train L-BFGS | 3.281s | 3.459s | Rust 1.05x slower |
-| Train L2-SGD | 89.296s | 93.098s | Rust 1.04x slower |
-| Train Averaged Perceptron | 5.892s | 6.045s | Rust 1.03x slower |
-| Train Passive-Aggressive | 6.969s | 7.176s | Rust 1.03x slower |
-| Train AROW | 7.030s | 7.144s | Rust 1.02x slower |
-| Tag plain labels | 0.244s | 0.186s | Rust 1.31x faster |
-| Tag scores + marginals (`-p -i`) | 0.325s | 0.225s | Rust 1.44x faster |
-| Tag all marginals (`-l`) | 0.609s | 0.369s | Rust 1.65x faster |
-| Tag quiet eval (`-t -q`) | 0.233s | 0.168s | Rust 1.39x faster |
-| Dump | 0.016s | 0.013s | Rust 1.23x faster |
+| Train L-BFGS | 4.029s | 4.191s | Rust 4.0% slower |
+| Train L2-SGD | 110.437s | 113.511s | Rust 2.8% slower |
+| Train Averaged Perceptron | 7.080s | 7.368s | Rust 4.1% slower |
+| Train Passive-Aggressive | 8.542s | 8.853s | Rust 3.6% slower |
+| Train AROW | 9.784s | 9.068s | Rust 7.3% faster |
+| Tag plain labels | 0.370s | 0.193s | Rust 1.9x faster |
+| Tag scores + marginals (`-p -i`) | 0.446s | 0.298s | Rust 1.5x faster |
+| Tag all marginals (`-l`) | 0.828s | 0.585s | Rust 1.4x faster |
+| Tag quiet eval (`-t -q`) | 0.303s | 0.265s | Rust 1.1x faster |
+| Dump | 0.019s | 0.010s | Rust 1.9x faster |
+
+On the same realistic fixture, output parity was checked explicitly:
+
+- C-trained L-BFGS model, plain tagging: byte-identical.
+- C-trained L-BFGS model, `tag -p -l`: byte-identical.
+- C-trained L-BFGS model, `dump`: byte-identical.
+- C-trained and Rust-trained L-BFGS model behavior on `tag -p -l`: byte-identical.
+- C-trained and Rust-trained L-BFGS dump output: byte-identical.
+
+Observed SHA-256 hashes for the shared outputs:
+
+| Output | SHA-256 |
+|---|---|
+| `tag -p -l` | `fdecd00ab5f3a8ea62c7892b71f7d4dc64c8c31ee8746248c053bf0fbb400a5e` |
+| `dump` | `83361a6dad62b7ee1dad85d9c727bafd8a1a4c62d2109a640bf8f269ead42200` |
 
 ## Project structure
 
@@ -315,4 +330,4 @@ The conformance suite verifies:
 
 ## License
 
-This is a port of CRFsuite by Naoaki Okazaki, licensed under the modified BSD license. See the original `crfsuite/` directory for the full license text.
+This is a port of CRFsuite by Naoaki Okazaki, licensed under the modified BSD license.

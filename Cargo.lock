@@ -123,6 +123,7 @@ dependencies = [
  "clap",
  "liblbfgs-compliant-rs",
  "tempfile",
+ "tracehash-rs",
 ]
 
 [[package]]
@@ -389,6 +390,12 @@ dependencies = [
  "rustix",
  "windows-sys",
 ]
+
+[[package]]
+name = "tracehash-rs"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4431a8d484228f060118f6cc754dd4cec799cae68de2d6f04a6719e705a79e0c"
 
 [[package]]
 name = "unicode-ident"
