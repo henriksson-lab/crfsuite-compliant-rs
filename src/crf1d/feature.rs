@@ -110,15 +110,11 @@ pub fn init_references(
 
     for (fid, f) in features.iter().enumerate() {
         match f.ftype {
-            FT_STATE => {
-                if (f.src as usize) < num_attrs {
-                    attr_refs[f.src as usize].fids.push(fid as i32);
-                }
+            FT_STATE if (f.src as usize) < num_attrs => {
+                attr_refs[f.src as usize].fids.push(fid as i32);
             }
-            FT_TRANS => {
-                if (f.src as usize) < num_labels {
-                    label_refs[f.src as usize].fids.push(fid as i32);
-                }
+            FT_TRANS if (f.src as usize) < num_labels => {
+                label_refs[f.src as usize].fids.push(fid as i32);
             }
             _ => {}
         }
