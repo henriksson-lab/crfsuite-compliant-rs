@@ -59,8 +59,11 @@ pub fn train_passive_aggressive(
             let sv = encoder.viterbi(&mut pred[..t_max]);
 
             if pred[..t_max] != inst.labels[..] {
-                let d = pred[..t_max].iter().zip(inst.labels.iter())
-                    .filter(|(p, g)| p != g).count() as f64;
+                let d = pred[..t_max]
+                    .iter()
+                    .zip(inst.labels.iter())
+                    .filter(|(p, g)| p != g)
+                    .count() as f64;
 
                 let sc = encoder.score(&inst.labels);
                 let cost = if error_sensitive {

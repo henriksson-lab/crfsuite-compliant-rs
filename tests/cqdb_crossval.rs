@@ -2,13 +2,12 @@
 //! Load the label and attribute CQDBs from a real model file and verify
 //! that all lookups produce identical results.
 
-use crfsuite_compliant_rs::cqdb::{CqdbReader, CqdbWriter};
 use crfsuite_compliant_rs::cqdb::lookup3;
+use crfsuite_compliant_rs::cqdb::{CqdbReader, CqdbWriter};
 use std::path::PathBuf;
 
 fn project_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .to_path_buf()
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).to_path_buf()
 }
 
 fn model_bytes() -> Vec<u8> {
@@ -16,7 +15,7 @@ fn model_bytes() -> Vec<u8> {
 }
 
 fn read_u32(buf: &[u8], off: usize) -> u32 {
-    u32::from_le_bytes([buf[off], buf[off+1], buf[off+2], buf[off+3]])
+    u32::from_le_bytes([buf[off], buf[off + 1], buf[off + 2], buf[off + 3]])
 }
 
 /// Parse the model header to find the label and attribute CQDB offsets and sizes.
@@ -40,7 +39,7 @@ fn find_cqdb_sections(model: &[u8]) -> ((usize, usize), (usize, usize)) {
 fn test_label_cqdb_reader() {
     let model = model_bytes();
     let ((off, size), _) = find_cqdb_sections(&model);
-    let cqdb_buf = &model[off..off+size];
+    let cqdb_buf = &model[off..off + size];
 
     let reader = CqdbReader::open(cqdb_buf).expect("failed to open label CQDB");
     let num = reader.num();
@@ -48,9 +47,17 @@ fn test_label_cqdb_reader() {
 
     // Read all labels via to_string and verify round-trip with to_id
     for id in 0..num as i32 {
-        let s = reader.to_string(id).unwrap_or_else(|| panic!("to_string({}) failed", id));
-        let got_id = reader.to_id(s).unwrap_or_else(|| panic!("to_id({:?}) failed", s));
-        assert_eq!(got_id, id, "round-trip failed for {:?}: got {} expected {}", s, got_id, id);
+        let s = reader
+            .to_string(id)
+            .unwrap_or_else(|| panic!("to_string({}) failed", id));
+        let got_id = reader
+            .to_id(s)
+            .unwrap_or_else(|| panic!("to_id({:?}) failed", s));
+        assert_eq!(
+            got_id, id,
+            "round-trip failed for {:?}: got {} expected {}",
+            s, got_id, id
+        );
     }
 
     // Known labels from the training data
@@ -65,7 +72,7 @@ fn test_label_cqdb_reader() {
 fn test_attr_cqdb_reader() {
     let model = model_bytes();
     let (_, (off, size)) = find_cqdb_sections(&model);
-    let cqdb_buf = &model[off..off+size];
+    let cqdb_buf = &model[off..off + size];
 
     let reader = CqdbReader::open(cqdb_buf).expect("failed to open attr CQDB");
     let num = reader.num();
@@ -73,8 +80,12 @@ fn test_attr_cqdb_reader() {
 
     // Round-trip all attributes
     for id in 0..num as i32 {
-        let s = reader.to_string(id).unwrap_or_else(|| panic!("attr to_string({}) failed", id));
-        let got_id = reader.to_id(s).unwrap_or_else(|| panic!("attr to_id({:?}) failed", s));
+        let s = reader
+            .to_string(id)
+            .unwrap_or_else(|| panic!("attr to_string({}) failed", id));
+        let got_id = reader
+            .to_id(s)
+            .unwrap_or_else(|| panic!("attr to_id({:?}) failed", s));
         assert_eq!(got_id, id, "attr round-trip failed for {:?}", s);
     }
 
@@ -91,7 +102,7 @@ fn test_lookup3_against_c() {
     // depend on hash correctness).
     let model = model_bytes();
     let ((off, size), _) = find_cqdb_sections(&model);
-    let reader = CqdbReader::open(&model[off..off+size]).unwrap();
+    let reader = CqdbReader::open(&model[off..off + size]).unwrap();
 
     // If to_id works for every label, the hash is correct
     let num = reader.num();
@@ -139,9 +150,11 @@ fn test_cqdb_writer_matches_c_label_cqdb() {
     let rust_cqdb = writer.close();
 
     assert_eq!(
-        c_cqdb.len(), rust_cqdb.len(),
+        c_cqdb.len(),
+        rust_cqdb.len(),
         "Label CQDB size mismatch: C={} Rust={}",
-        c_cqdb.len(), rust_cqdb.len()
+        c_cqdb.len(),
+        rust_cqdb.len()
     );
     assert_eq!(c_cqdb, &rust_cqdb[..], "Label CQDB bytes differ");
 }
@@ -163,9 +176,11 @@ fn test_cqdb_writer_matches_c_attr_cqdb() {
     let rust_cqdb = writer.close();
 
     assert_eq!(
-        c_cqdb.len(), rust_cqdb.len(),
+        c_cqdb.len(),
+        rust_cqdb.len(),
         "Attr CQDB size mismatch: C={} Rust={}",
-        c_cqdb.len(), rust_cqdb.len()
+        c_cqdb.len(),
+        rust_cqdb.len()
     );
     assert_eq!(c_cqdb, &rust_cqdb[..], "Attr CQDB bytes differ");
 }

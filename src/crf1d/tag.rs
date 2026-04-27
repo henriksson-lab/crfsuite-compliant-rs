@@ -56,7 +56,9 @@ impl<'a> Crf1dTagger<'a> {
             let state_start = t * l;
             for attr in &item.contents {
                 let aid = attr.aid;
-                if aid < 0 { continue; }
+                if aid < 0 {
+                    continue;
+                }
                 let refs = self.model.get_attrref(aid);
                 let value = attr.value;
                 for &fid in refs {
@@ -84,6 +86,20 @@ impl<'a> Crf1dTagger<'a> {
         self.ctx.reset(RF_STATE);
         self.set_state_scores(inst);
         self.level = LEVEL_SET;
+    }
+
+    /// Set an instance after sorting each item's attributes by id.
+    ///
+    /// CRFsuite's scoring is a floating-point accumulation over item
+    /// attributes, so callers that build `Item::contents` from unordered
+    /// containers can otherwise get last-bit drift. This leaves `set()`
+    /// unchanged for CLI/C conformance paths that must preserve input order.
+    pub fn set_canonical(&mut self, inst: &Instance) {
+        let mut canonical = inst.clone();
+        for item in &mut canonical.items {
+            item.contents.sort_by_key(|attr| attr.aid);
+        }
+        self.set(&canonical);
     }
 
     /// Run Viterbi decoding. Returns (labels, score).

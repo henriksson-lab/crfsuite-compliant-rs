@@ -19,23 +19,23 @@ pub struct Crf1dContext {
     cap_items: usize,
 
     // Score matrices [T * L] or [L * L]
-    pub(crate) state: Vec<f64>,       // [T][L] state scores (log domain)
-    pub(crate) trans: Vec<f64>,       // [L][L] transition scores (log domain)
+    pub(crate) state: Vec<f64>, // [T][L] state scores (log domain)
+    pub(crate) trans: Vec<f64>, // [L][L] transition scores (log domain)
 
     // Forward-backward
-    pub(crate) alpha_score: Vec<f64>, // [T][L]
-    pub(crate) beta_score: Vec<f64>,  // [T][L]
-    pub(crate) scale_factor: Vec<f64>,// [T]
-    row: Vec<f64>,             // [L] scratch
+    pub(crate) alpha_score: Vec<f64>,  // [T][L]
+    pub(crate) beta_score: Vec<f64>,   // [T][L]
+    pub(crate) scale_factor: Vec<f64>, // [T]
+    row: Vec<f64>,                     // [L] scratch
 
     // Viterbi
     pub(crate) backward_edge: Vec<i32>, // [T][L]
 
     // Marginals (exponentiated)
-    pub(crate) exp_state: Vec<f64>,   // [T][L]
-    pub(crate) exp_trans: Vec<f64>,   // [L][L]
-    pub(crate) mexp_state: Vec<f64>,  // [T][L] model expectations
-    pub(crate) mexp_trans: Vec<f64>,  // [L][L] model expectations
+    pub(crate) exp_state: Vec<f64>,  // [T][L]
+    pub(crate) exp_trans: Vec<f64>,  // [L][L]
+    pub(crate) mexp_state: Vec<f64>, // [T][L] model expectations
+    pub(crate) mexp_trans: Vec<f64>, // [L][L] model expectations
 
     pub(crate) log_norm: f64,
 }
@@ -56,9 +56,17 @@ impl Crf1dContext {
             row: Vec::new(),
             backward_edge: Vec::new(),
             exp_state: Vec::new(),
-            exp_trans: if flag & CTXF_MARGINALS != 0 { vec![0.0; l * l] } else { Vec::new() },
+            exp_trans: if flag & CTXF_MARGINALS != 0 {
+                vec![0.0; l * l]
+            } else {
+                Vec::new()
+            },
             mexp_state: Vec::new(),
-            mexp_trans: if flag & CTXF_MARGINALS != 0 { vec![0.0; l * l] } else { Vec::new() },
+            mexp_trans: if flag & CTXF_MARGINALS != 0 {
+                vec![0.0; l * l]
+            } else {
+                Vec::new()
+            },
             log_norm: 0.0,
         };
         if cap_items > 0 {
@@ -163,7 +171,9 @@ impl Crf1dContext {
             let sum: f64 = alpha_part.iter().sum();
             self.scale_factor[0] = if sum != 0.0 { 1.0 / sum } else { 1.0 };
             let s = self.scale_factor[0];
-            for v in alpha_part.iter_mut() { *v *= s; }
+            for v in alpha_part.iter_mut() {
+                *v *= s;
+            }
         }
 
         // t=1..T-1: alpha[t][j] = exp_state[t][j] * sum_i(alpha[t-1][i] * exp_trans[i][j])
@@ -198,7 +208,10 @@ impl Crf1dContext {
         }
 
         // log_norm = -sum(log(scale_factor[t]))
-        self.log_norm = -self.scale_factor[..t_max].iter().map(|s| s.ln()).sum::<f64>();
+        self.log_norm = -self.scale_factor[..t_max]
+            .iter()
+            .map(|s| s.ln())
+            .sum::<f64>();
     }
 
     // ── Backward algorithm (beta scores) ────────────────────────────────
@@ -411,12 +424,16 @@ mod tests {
         ctx.set_num_items(2);
 
         // State scores: item 0 prefers label 0, item 1 prefers label 1
-        ctx.state[0] = 2.0; ctx.state[1] = 0.0; // t=0: [2, 0]
-        ctx.state[2] = 0.0; ctx.state[3] = 2.0; // t=1: [0, 2]
+        ctx.state[0] = 2.0;
+        ctx.state[1] = 0.0; // t=0: [2, 0]
+        ctx.state[2] = 0.0;
+        ctx.state[3] = 2.0; // t=1: [0, 2]
 
         // Transition: 0→1 is good (1.0), others neutral (0.0)
-        ctx.trans[0] = 0.0; ctx.trans[1] = 1.0; // from 0: [0→0, 0→1]
-        ctx.trans[2] = 0.0; ctx.trans[3] = 0.0; // from 1: [1→0, 1→1]
+        ctx.trans[0] = 0.0;
+        ctx.trans[1] = 1.0; // from 0: [0→0, 0→1]
+        ctx.trans[2] = 0.0;
+        ctx.trans[3] = 0.0; // from 1: [1→0, 1→1]
 
         let mut labels = vec![0i32; 2];
         let score = ctx.viterbi(&mut labels);
@@ -435,8 +452,12 @@ mod tests {
         ctx.set_num_items(t);
 
         // Set some state/trans scores
-        for i in 0..t * l { ctx.state[i] = (i as f64) * 0.3 - 1.0; }
-        for i in 0..l * l { ctx.trans[i] = (i as f64) * 0.2 - 0.5; }
+        for i in 0..t * l {
+            ctx.state[i] = (i as f64) * 0.3 - 1.0;
+        }
+        for i in 0..l * l {
+            ctx.trans[i] = (i as f64) * 0.2 - 0.5;
+        }
 
         ctx.exp_state();
         ctx.exp_transition();
@@ -449,7 +470,9 @@ mod tests {
             let sum: f64 = (0..l).map(|j| ctx.marginal_point(j, pos)).sum();
             assert!(
                 (sum - 1.0).abs() < 1e-10,
-                "marginals at t={} sum to {} instead of 1.0", pos, sum
+                "marginals at t={} sum to {} instead of 1.0",
+                pos,
+                sum
             );
         }
     }
@@ -461,8 +484,12 @@ mod tests {
         let mut ctx = Crf1dContext::new(CTXF_VITERBI | CTXF_MARGINALS, l, t);
         ctx.set_num_items(t);
 
-        for i in 0..t * l { ctx.state[i] = (i as f64) * 0.5 - 2.0; }
-        for i in 0..l * l { ctx.trans[i] = (i as f64) * 0.3 - 1.0; }
+        for i in 0..t * l {
+            ctx.state[i] = (i as f64) * 0.5 - 2.0;
+        }
+        for i in 0..l * l {
+            ctx.trans[i] = (i as f64) * 0.3 - 1.0;
+        }
 
         let mut labels = vec![0i32; t];
         let viterbi_score = ctx.viterbi(&mut labels);
@@ -471,7 +498,9 @@ mod tests {
         let path_score = ctx.score(&labels);
         assert!(
             (viterbi_score - path_score).abs() < 1e-10,
-            "viterbi score {} != path score {}", viterbi_score, path_score
+            "viterbi score {} != path score {}",
+            viterbi_score,
+            path_score
         );
     }
 

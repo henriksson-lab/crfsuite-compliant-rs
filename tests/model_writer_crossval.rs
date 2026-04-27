@@ -272,7 +272,10 @@ fn test_model_section_layout_offsets_and_padding() {
     assert!(off_labelrefs < off_attrrefs);
 
     assert_eq!(&bytes[off_features..off_features + 4], b"FEAT");
-    assert_eq!(read_u32(&bytes, off_features + 4) as usize, off_labels - off_features);
+    assert_eq!(
+        read_u32(&bytes, off_features + 4) as usize,
+        off_labels - off_features
+    );
     assert_eq!(read_u32(&bytes, off_features + 8), 3);
 
     assert_eq!(&bytes[off_labels..off_labels + 4], b"CQDB");

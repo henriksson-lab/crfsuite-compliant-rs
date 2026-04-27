@@ -1,11 +1,11 @@
 pub mod cqdb;
-mod rng;
 pub mod crf1d;
 pub mod dataset;
 pub mod dump;
 pub mod model;
 pub mod model_writer;
 pub mod quark;
+mod rng;
 pub mod train;
 pub mod types;
 pub mod vecmath;

@@ -134,7 +134,7 @@ pub fn write_model(
     buf[4..8].copy_from_slice(&total_size.to_le_bytes());
     buf[8..12].copy_from_slice(b"FOMC");
     buf[12..16].copy_from_slice(&100u32.to_le_bytes()); // version
-    buf[16..20].copy_from_slice(&0u32.to_le_bytes());   // num_features (always 0 in header)
+    buf[16..20].copy_from_slice(&0u32.to_le_bytes()); // num_features (always 0 in header)
     buf[20..24].copy_from_slice(&(num_labels as u32).to_le_bytes());
     buf[24..28].copy_from_slice(&(active_attrs as u32).to_le_bytes());
     buf[28..32].copy_from_slice(&off_features.to_le_bytes());
@@ -156,7 +156,11 @@ fn write_featureref_chunk(
 ) {
     let chunk_start = buf.len();
     // The C code opens with num_labels+2 offset slots for LFRF
-    let offset_count = if chunk_id == b"LFRF" { num_entries + 2 } else { num_entries };
+    let offset_count = if chunk_id == b"LFRF" {
+        num_entries + 2
+    } else {
+        num_entries
+    };
 
     // Reserve chunk header (12 bytes) + offset array
     let header_and_offsets_size = CHUNK_HEADER_SIZE + 4 * offset_count;
@@ -170,10 +174,16 @@ fn write_featureref_chunk(
 
         // Count active features
         let active: Vec<i32> = if i < refs.len() {
-            refs[i].fids.iter()
+            refs[i]
+                .fids
+                .iter()
                 .filter_map(|&fid| {
                     let mapped = fmap[fid as usize];
-                    if mapped >= 0 { Some(mapped) } else { None }
+                    if mapped >= 0 {
+                        Some(mapped)
+                    } else {
+                        None
+                    }
                 })
                 .collect()
         } else {
@@ -222,10 +232,16 @@ fn write_attrref_chunk(
             offsets.push((amap[a] as usize, offset));
 
             let active: Vec<i32> = if a < refs.len() {
-                refs[a].fids.iter()
+                refs[a]
+                    .fids
+                    .iter()
                     .filter_map(|&fid| {
                         let mapped = fmap[fid as usize];
-                        if mapped >= 0 { Some(mapped) } else { None }
+                        if mapped >= 0 {
+                            Some(mapped)
+                        } else {
+                            None
+                        }
                     })
                     .collect()
             } else {

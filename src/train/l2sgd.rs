@@ -191,7 +191,9 @@ fn l2sgd_calibration(
     let mut best_loss = f64::MAX;
     let init_eta = options.calibration_eta;
     let rate = options.calibration_rate;
-    let samples = instances.len().min(options.calibration_samples.max(0) as usize);
+    let samples = instances
+        .len()
+        .min(options.calibration_samples.max(0) as usize);
 
     (log)("Calibrating the learning rate (eta)\n");
     (log)(&format!("calibration.eta: {:.6}\n", eta));

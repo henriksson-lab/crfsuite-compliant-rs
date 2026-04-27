@@ -3,8 +3,8 @@ use crfsuite_compliant_rs::train;
 use crfsuite_compliant_rs::types::Instance;
 
 use crate::learn_params::{
-    get_float_param, get_int_param, get_str_param, ALGO_AROW, ALGO_AVERAGED_PERCEPTRON,
-    ALGO_L2SGD, ALGO_LBFGS, ALGO_PASSIVE_AGGRESSIVE,
+    get_float_param, get_int_param, get_str_param, ALGO_AROW, ALGO_AVERAGED_PERCEPTRON, ALGO_L2SGD,
+    ALGO_LBFGS, ALGO_PASSIVE_AGGRESSIVE,
 };
 
 pub struct TrainOnce<'a> {
@@ -96,7 +96,8 @@ pub fn train_once(
             let delta = get_float_param(algorithm, config.params, "delta");
             let calibration_eta = get_float_param(algorithm, config.params, "calibration.eta");
             let calibration_rate = get_float_param(algorithm, config.params, "calibration.rate");
-            let calibration_samples = get_int_param(algorithm, config.params, "calibration.samples");
+            let calibration_samples =
+                get_int_param(algorithm, config.params, "calibration.samples");
             let calibration_candidates =
                 get_int_param(algorithm, config.params, "calibration.candidates");
             let calibration_max_trials =
@@ -121,17 +122,16 @@ pub fn train_once(
         ALGO_AVERAGED_PERCEPTRON => {
             let max_iter = get_int_param(algorithm, config.params, "max_iterations");
             let epsilon = get_float_param(algorithm, config.params, "epsilon");
-            let mut holdout_eval = |encoder: &mut Crf1dEncoder,
-                                    weights: &[f64],
-                                    log: &mut train::LogFn| {
-                log_holdout_evaluation(
-                    encoder,
-                    weights,
-                    &test_instances,
-                    config.label_strings,
-                    log,
-                );
-            };
+            let mut holdout_eval =
+                |encoder: &mut Crf1dEncoder, weights: &[f64], log: &mut train::LogFn| {
+                    log_holdout_evaluation(
+                        encoder,
+                        weights,
+                        &test_instances,
+                        config.label_strings,
+                        log,
+                    );
+                };
             let holdout = if config.holdout >= 0 {
                 Some(&mut holdout_eval as &mut train::HoldoutFn<'_>)
             } else {
@@ -153,17 +153,16 @@ pub fn train_once(
             let averaging = get_int_param(algorithm, config.params, "averaging") != 0;
             let max_iter = get_int_param(algorithm, config.params, "max_iterations");
             let epsilon = get_float_param(algorithm, config.params, "epsilon");
-            let mut holdout_eval = |encoder: &mut Crf1dEncoder,
-                                    weights: &[f64],
-                                    log: &mut train::LogFn| {
-                log_holdout_evaluation(
-                    encoder,
-                    weights,
-                    &test_instances,
-                    config.label_strings,
-                    log,
-                );
-            };
+            let mut holdout_eval =
+                |encoder: &mut Crf1dEncoder, weights: &[f64], log: &mut train::LogFn| {
+                    log_holdout_evaluation(
+                        encoder,
+                        weights,
+                        &test_instances,
+                        config.label_strings,
+                        log,
+                    );
+                };
             let holdout = if config.holdout >= 0 {
                 Some(&mut holdout_eval as &mut train::HoldoutFn<'_>)
             } else {
@@ -187,17 +186,16 @@ pub fn train_once(
             let gamma = get_float_param(algorithm, config.params, "gamma");
             let max_iter = get_int_param(algorithm, config.params, "max_iterations");
             let epsilon = get_float_param(algorithm, config.params, "epsilon");
-            let mut holdout_eval = |encoder: &mut Crf1dEncoder,
-                                    weights: &[f64],
-                                    log: &mut train::LogFn| {
-                log_holdout_evaluation(
-                    encoder,
-                    weights,
-                    &test_instances,
-                    config.label_strings,
-                    log,
-                );
-            };
+            let mut holdout_eval =
+                |encoder: &mut Crf1dEncoder, weights: &[f64], log: &mut train::LogFn| {
+                    log_holdout_evaluation(
+                        encoder,
+                        weights,
+                        &test_instances,
+                        config.label_strings,
+                        log,
+                    );
+                };
             let holdout = if config.holdout >= 0 {
                 Some(&mut holdout_eval as &mut train::HoldoutFn<'_>)
             } else {
@@ -240,7 +238,11 @@ fn log_holdout_evaluation(
     let mut item_correct = 0i32;
     let mut inst_total = 0i32;
     let mut inst_correct = 0i32;
-    let max_t = instances.iter().map(|inst| inst.num_items()).max().unwrap_or(0);
+    let max_t = instances
+        .iter()
+        .map(|inst| inst.num_items())
+        .max()
+        .unwrap_or(0);
     let mut pred = vec![0i32; max_t];
 
     encoder.set_weights(weights, 1.0);

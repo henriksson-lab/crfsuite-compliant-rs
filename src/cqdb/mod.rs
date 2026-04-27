@@ -12,7 +12,12 @@ const TABLEREF_SIZE: usize = NUM_TABLES * 8; // 256 × (offset u32 + num u32)
 const OFFSET_DATA: usize = HEADER_SIZE + TABLEREF_SIZE; // 2072
 
 fn read_u32(buf: &[u8], offset: usize) -> u32 {
-    u32::from_le_bytes([buf[offset], buf[offset + 1], buf[offset + 2], buf[offset + 3]])
+    u32::from_le_bytes([
+        buf[offset],
+        buf[offset + 1],
+        buf[offset + 2],
+        buf[offset + 3],
+    ])
 }
 
 // ── CQDB Reader ─────────────────────────────────────────────────────────────
@@ -77,7 +82,9 @@ impl<'a> CqdbReader<'a> {
                 total_records += tbl_num / 2;
                 tables.push(Table { buckets });
             } else {
-                tables.push(Table { buckets: Vec::new() });
+                tables.push(Table {
+                    buckets: Vec::new(),
+                });
             }
         }
 
@@ -184,10 +191,10 @@ struct WriterTable {
 /// Builds a CQDB chunk in memory, producing the same byte layout as the C writer.
 pub struct CqdbWriter {
     flag: u32,
-    data: Vec<u8>,     // accumulates header + tablerefs + records
+    data: Vec<u8>, // accumulates header + tablerefs + records
     tables: Vec<WriterTable>,
-    bwd: Vec<u32>,     // backward links (id → offset)
-    bwd_num: usize,    // highest id+1
+    bwd: Vec<u32>,  // backward links (id → offset)
+    bwd_num: usize, // highest id+1
 }
 
 impl CqdbWriter {
@@ -198,7 +205,11 @@ impl CqdbWriter {
         CqdbWriter {
             flag,
             data,
-            tables: (0..NUM_TABLES).map(|_| WriterTable { entries: Vec::new() }).collect(),
+            tables: (0..NUM_TABLES)
+                .map(|_| WriterTable {
+                    entries: Vec::new(),
+                })
+                .collect(),
             bwd: Vec::new(),
             bwd_num: 0,
         }
@@ -220,10 +231,13 @@ impl CqdbWriter {
         self.data.push(0); // null terminator
 
         // Add to hash table
-        self.tables[t].entries.push(WriterBucket { hash: hv, offset });
+        self.tables[t]
+            .entries
+            .push(WriterBucket { hash: hv, offset });
 
         // Add backward link
-        if self.flag & 1 == 0 { // not CQDB_ONEWAY
+        if self.flag & 1 == 0 {
+            // not CQDB_ONEWAY
             let uid = id as usize;
             if uid >= self.bwd.len() {
                 self.bwd.resize(uid + 1, 0);
@@ -321,12 +335,7 @@ mod tests {
 
     #[test]
     fn test_cqdb_writer_reader_roundtrip() {
-        let entries = vec![
-            (0, "B-NP"),
-            (1, "I-NP"),
-            (2, "B-VP"),
-            (3, "B-PP"),
-        ];
+        let entries = vec![(0, "B-NP"), (1, "I-NP"), (2, "B-VP"), (3, "B-PP")];
 
         let mut writer = CqdbWriter::new(0);
         for &(id, s) in &entries {

@@ -1,8 +1,8 @@
-pub mod lbfgs;
-pub mod l2sgd;
-pub mod averaged_perceptron;
-pub mod passive_aggressive;
 pub mod arow;
+pub mod averaged_perceptron;
+pub mod l2sgd;
+pub mod lbfgs;
+pub mod passive_aggressive;
 
 /// Logging callback type for training progress.
 pub type LogFn = Box<dyn FnMut(&str)>;
@@ -18,5 +18,7 @@ pub fn noop_logger() -> LogFn {
 
 /// Logger that prints to stdout.
 pub fn stdout_logger() -> LogFn {
-    Box::new(|msg| { print!("{}", msg); })
+    Box::new(|msg| {
+        print!("{}", msg);
+    })
 }

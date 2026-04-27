@@ -2,9 +2,9 @@
 
 A pure Rust implementation of [CRFsuite](http://www.chokkan.org/software/crfsuite/) — Conditional Random Fields for labeling sequential data.
 
-This is a Rust port of Naoaki Okazaki's CRFsuite 0.12, focused on **binary-compatible model files** and **identical inference results** for the covered 1D CRF paths.
+This is a Rust port of Naoaki Okazaki's CRFsuite 0.12 [chokkan/crfsuite](https://github.com/chokkan/crfsuite), commit [`a2a1547`](https://github.com/chokkan/crfsuite/commit/a2a1547727985e3aff6a35cffe073f57f0223e9d).
 
-Based on [chokkan/crfsuite](https://github.com/chokkan/crfsuite) version **0.12.2**, commit [`a2a1547`](https://github.com/chokkan/crfsuite/commit/a2a1547727985e3aff6a35cffe073f57f0223e9d).
+* 2026-04-27: Translation now passes tests. Ready for use but be vigilant to bugs
 
 ## This is an LLM-mediated faithful (hopefully) translation, not the original code! 
 
@@ -53,7 +53,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crfsuite-compliant-rs = { version = "0.1", default-features = false }
+crfsuite-compliant-rs = { version = "0.2.1", default-features = false }
 ```
 
 (Use `default-features = false` to avoid pulling in `clap` when you only need the library.)

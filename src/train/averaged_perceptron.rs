@@ -47,8 +47,11 @@ pub fn train_averaged_perceptron(
             encoder.viterbi(&mut pred[..t_max]);
 
             if pred[..t_max] != inst.labels[..] {
-                let d = pred[..t_max].iter().zip(inst.labels.iter())
-                    .filter(|(p, g)| p != g).count();
+                let d = pred[..t_max]
+                    .iter()
+                    .zip(inst.labels.iter())
+                    .filter(|(p, g)| p != g)
+                    .count();
 
                 let cf = c as f64;
                 encoder.features_on_path_encoded(inst, &inst.labels, |fid, val| {

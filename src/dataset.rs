@@ -10,7 +10,9 @@ pub struct Dataset<'a> {
 impl<'a> Dataset<'a> {
     /// Create training set: all instances whose group != holdout.
     pub fn init_trainset(data: &'a [Instance], holdout: i32) -> Self {
-        let perm: Vec<usize> = data.iter().enumerate()
+        let perm: Vec<usize> = data
+            .iter()
+            .enumerate()
             .filter(|(_, inst)| holdout < 0 || inst.group != holdout)
             .map(|(i, _)| i)
             .collect();
@@ -19,7 +21,9 @@ impl<'a> Dataset<'a> {
 
     /// Create test set: all instances whose group == holdout.
     pub fn init_testset(data: &'a [Instance], holdout: i32) -> Self {
-        let perm: Vec<usize> = data.iter().enumerate()
+        let perm: Vec<usize> = data
+            .iter()
+            .enumerate()
             .filter(|(_, inst)| inst.group == holdout)
             .map(|(i, _)| i)
             .collect();

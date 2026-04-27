@@ -276,7 +276,14 @@ mod tests {
             // Check within ~1e-10 relative error of std exp
             let expected = x.exp();
             let rel_err = (result - expected).abs() / expected.max(1e-300);
-            assert!(rel_err < 1e-8, "exp({}) = {}, expected {}, rel_err = {}", x, result, expected, rel_err);
+            assert!(
+                rel_err < 1e-8,
+                "exp({}) = {}, expected {}, rel_err = {}",
+                x,
+                result,
+                expected,
+                rel_err
+            );
         }
     }
 }

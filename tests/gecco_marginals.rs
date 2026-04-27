@@ -70,9 +70,7 @@ fn build_instance(model: &ModelReader, features: &[Vec<&str>]) -> Instance {
         .map(|feat_list| {
             let attrs: Vec<Attribute> = feat_list
                 .iter()
-                .filter_map(|name| {
-                    model.to_aid(name).map(|aid| Attribute { aid, value: 1.0 })
-                })
+                .filter_map(|name| model.to_aid(name).map(|aid| Attribute { aid, value: 1.0 }))
                 .collect();
             Item { contents: attrs }
         })
@@ -107,9 +105,7 @@ fn parse_cli_marginals(output: &str) -> Vec<f64> {
         .map(|line| {
             // Find the field that starts with "1:"
             line.split('\t')
-                .find_map(|field| {
-                    field.strip_prefix("1:").map(|v| v.parse::<f64>().unwrap())
-                })
+                .find_map(|field| field.strip_prefix("1:").map(|v| v.parse::<f64>().unwrap()))
                 .expect("no 1:value field in CLI output line")
         })
         .collect()
@@ -120,25 +116,42 @@ fn parse_cli_marginals(output: &str) -> Vec<f64> {
 /// Window at position 0: low-probability non-cluster region.
 fn window_start_features() -> Vec<Vec<&'static str>> {
     vec![
-        vec!["PF00004", "PF13173", "PF13245", "PF01637", "PF00308", "PF08299", "PF11638", "PF01695"],
+        vec![
+            "PF00004", "PF13173", "PF13245", "PF01637", "PF00308", "PF08299", "PF11638", "PF01695",
+        ],
         vec!["PF00712", "PF02767", "PF02768"],
         vec!["PF13275"],
-        vec!["PF13175", "PF13304", "PF13476", "PF13514", "PF13555", "PF02463"],
+        vec![
+            "PF13175", "PF13304", "PF13476", "PF13514", "PF13555", "PF02463",
+        ],
         vec!["PF00204", "PF00986", "PF02518", "PF13589", "PF01751"],
         vec![],
         vec!["PF03989", "PF00521"],
         vec![],
         vec!["PF01081", "PF00571", "PF01070", "PF01645", "PF03060"],
         vec!["PF13354", "PF07943", "PF00768"],
-        vec!["PF02639", "PF01207", "PF00977", "PF03060", "PF01680", "PF05690"],
+        vec![
+            "PF02639", "PF01207", "PF00977", "PF03060", "PF01680", "PF05690",
+        ],
         vec!["PF01965", "PF07685", "PF13507", "PF03575", "PF01174"],
         vec!["PF10186", "PF03462", "PF02403", "PF00587"],
-        vec!["PF13191", "PF13207", "PF13238", "PF13481", "PF13671", "PF07728", "PF00005", "PF01656", "PF13189", "PF01712", "PF05729", "PF00931", "PF10609", "PF03193", "PF01202", "PF02223", "PF02367"],
-        vec!["PF00004", "PF13191", "PF13207", "PF13238", "PF13671", "PF07728", "PF02224", "PF01712", "PF08433", "PF05729", "PF00931", "PF01202", "PF02223", "PF02367"],
+        vec![
+            "PF13191", "PF13207", "PF13238", "PF13481", "PF13671", "PF07728", "PF00005", "PF01656",
+            "PF13189", "PF01712", "PF05729", "PF00931", "PF10609", "PF03193", "PF01202", "PF02223",
+            "PF02367",
+        ],
+        vec![
+            "PF00004", "PF13191", "PF13207", "PF13238", "PF13671", "PF07728", "PF02224", "PF01712",
+            "PF08433", "PF05729", "PF00931", "PF01202", "PF02223", "PF02367",
+        ],
         vec!["PF00704", "PF01476"],
         vec!["PF00857"],
         vec!["PF00383", "PF14437", "PF17917", "PF17919"],
-        vec!["PF00004", "PF13173", "PF13191", "PF13238", "PF13245", "PF13479", "PF13604", "PF07728", "PF16193", "PF00005", "PF13177", "PF12169", "PF01935", "PF01078", "PF05496", "PF00158", "PF01202", "PF00437", "PF10412", "PF02367"],
+        vec![
+            "PF00004", "PF13173", "PF13191", "PF13238", "PF13245", "PF13479", "PF13604", "PF07728",
+            "PF16193", "PF00005", "PF13177", "PF12169", "PF01935", "PF01078", "PF05496", "PF00158",
+            "PF01202", "PF00437", "PF10412", "PF02367",
+        ],
         vec!["PF00669", "PF02575"],
     ]
 }
@@ -176,18 +189,28 @@ fn window_cluster_features() -> Vec<Vec<&'static str>> {
         vec![],
         vec![],
         vec![],
-        vec!["PF12848", "PF04977", "PF07195", "PF02050", "PF02195", "PF04012"],
+        vec![
+            "PF12848", "PF04977", "PF07195", "PF02050", "PF02195", "PF04012",
+        ],
         vec![],
         vec![],
         vec![],
         vec!["PF01757", "PF01027"],
         vec![],
         vec!["PF00733", "PF12481", "PF13522", "PF13537"],
-        vec!["PF02737", "PF01593", "PF01266", "PF00890", "PF01494", "PF12831", "PF01134", "PF03486", "PF13450", "PF13454", "PF00070", "PF13738"],
-        vec!["PF01593", "PF01266", "PF00890", "PF01494", "PF12831", "PF03486", "PF13450", "PF13454", "PF00070"],
+        vec![
+            "PF02737", "PF01593", "PF01266", "PF00890", "PF01494", "PF12831", "PF01134", "PF03486",
+            "PF13450", "PF13454", "PF00070", "PF13738",
+        ],
+        vec![
+            "PF01593", "PF01266", "PF00890", "PF01494", "PF12831", "PF03486", "PF13450", "PF13454",
+            "PF00070",
+        ],
         vec!["PF00494"],
         vec!["PF00128", "PF16657"],
-        vec!["PF12728", "PF01381", "PF00356", "PF00532", "PF13377", "PF13407"],
+        vec![
+            "PF12728", "PF01381", "PF00356", "PF00532", "PF13377", "PF13407",
+        ],
         vec!["PF00171"],
         vec!["PF00155", "PF00202", "PF01043"],
         vec!["PF01546", "PF04389"],
@@ -229,7 +252,10 @@ fn window_mid_features() -> Vec<Vec<&'static str>> {
         vec![],
         vec!["PF03602", "PF08241", "PF13649", "PF03141", "PF13847"],
         vec![],
-        vec!["PF01325", "PF08279", "PF12728", "PF13384", "PF13412", "PF13601", "PF01418", "PF08220", "PF04760", "PF01047", "PF12802", "PF01978"],
+        vec![
+            "PF01325", "PF08279", "PF12728", "PF13384", "PF13412", "PF13601", "PF01418", "PF08220",
+            "PF04760", "PF01047", "PF12802", "PF01978",
+        ],
         vec!["PF01066"],
         vec!["PF04011"],
         vec!["PF01022", "PF12802", "PF03965", "PF13091", "PF01978"],
@@ -279,7 +305,11 @@ fn assert_marginals_close(actual: &[f64], expected: &[f64], label: &str) {
     assert_eq!(actual.len(), expected.len(), "{label}: length mismatch");
     for (t, (a, e)) in actual.iter().zip(expected.iter()).enumerate() {
         let abs_diff = (a - e).abs();
-        let rel_diff = if *e != 0.0 { abs_diff / e.abs() } else { abs_diff };
+        let rel_diff = if *e != 0.0 {
+            abs_diff / e.abs()
+        } else {
+            abs_diff
+        };
         // Allow 1e-4 relative or 1e-15 absolute (for near-zero values)
         assert!(
             rel_diff < 1e-4 || abs_diff < 1e-15,
@@ -337,7 +367,11 @@ fn run_cli(bin: &PathBuf, model: &str, iwa: &str, env: Option<(&str, PathBuf)>) 
         cmd.env(key, val);
     }
     let o = cmd.output().expect("spawn binary");
-    assert!(o.status.success(), "{bin:?} failed: {}", String::from_utf8_lossy(&o.stderr));
+    assert!(
+        o.status.success(),
+        "{bin:?} failed: {}",
+        String::from_utf8_lossy(&o.stderr)
+    );
     String::from_utf8(o.stdout).unwrap()
 }
 
@@ -364,13 +398,15 @@ fn gecco_cli_marginals_vs_c() {
         };
         let iwa = iwa_path.to_str().unwrap().to_string();
 
-        let c_out = run_cli(&c_bin, &model, &iwa, Some(("LD_LIBRARY_PATH", lib_path.clone())));
+        let c_out = run_cli(
+            &c_bin,
+            &model,
+            &iwa,
+            Some(("LD_LIBRARY_PATH", lib_path.clone())),
+        );
         let rs_out = run_cli(&rs_bin, &model, &iwa, None);
 
-        assert_eq!(
-            c_out, rs_out,
-            "CLI marginals differ for {window_name}"
-        );
+        assert_eq!(c_out, rs_out, "CLI marginals differ for {window_name}");
     }
 }
 
@@ -379,9 +415,7 @@ fn gecco_cli_marginals_vs_c() {
 /// attribute mapping, etc.) vs the CLI's IWA parsing path.
 #[test]
 fn gecco_library_vs_cli_marginals() {
-    let rs_bin = {
-        rust_bin()
-    };
+    let rs_bin = { rust_bin() };
     if !rs_bin.exists() {
         eprintln!("SKIP: Rust binary not built");
         return;
@@ -414,7 +448,11 @@ fn gecco_library_vs_cli_marginals() {
         let cli_out = run_cli(&rs_bin, &model_str, &iwa, None);
         let cli_marginals = parse_cli_marginals(&cli_out);
 
-        assert_eq!(lib_marginals.len(), cli_marginals.len(), "{name}: length mismatch");
+        assert_eq!(
+            lib_marginals.len(),
+            cli_marginals.len(),
+            "{name}: length mismatch"
+        );
         for (t, (lib_val, cli_val)) in lib_marginals.iter().zip(cli_marginals.iter()).enumerate() {
             let diff = (lib_val - cli_val).abs();
             // CLI rounds to 6 decimals, so allow 5e-7 tolerance

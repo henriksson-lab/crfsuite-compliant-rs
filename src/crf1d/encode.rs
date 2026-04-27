@@ -12,8 +12,8 @@ pub struct Crf1dEncoder {
     pub num_attributes: usize,
     pub num_features: usize,
     pub features: Vec<Feature>,
-    pub attr_refs: Vec<FeatureRefs>,   // attribute → state feature IDs
-    pub label_refs: Vec<FeatureRefs>,  // label → transition feature IDs
+    pub attr_refs: Vec<FeatureRefs>,  // attribute → state feature IDs
+    pub label_refs: Vec<FeatureRefs>, // label → transition feature IDs
     pub ctx: Crf1dContext,
     weights: Vec<f64>,
     scale: f64,
@@ -47,12 +47,20 @@ impl Crf1dEncoder {
         possible_transitions: bool,
     ) -> Self {
         // Find maximum sequence length
-        let max_t = instances.iter().map(|inst| inst.num_items()).max().unwrap_or(0);
+        let max_t = instances
+            .iter()
+            .map(|inst| inst.num_items())
+            .max()
+            .unwrap_or(0);
 
         // Generate features
         let features = feature::generate_features(
-            instances, num_labels, num_attrs, min_freq,
-            possible_states, possible_transitions,
+            instances,
+            num_labels,
+            num_attrs,
+            min_freq,
+            possible_states,
+            possible_transitions,
         );
         let num_features = features.len();
 
@@ -94,7 +102,10 @@ impl Crf1dEncoder {
 
     /// Encode instances for trainer hot loops after the feature set is fixed.
     pub fn encode_instances(&self, instances: &[Instance]) -> Vec<EncodedInstance> {
-        instances.iter().map(|inst| self.encode_instance(inst)).collect()
+        instances
+            .iter()
+            .map(|inst| self.encode_instance(inst))
+            .collect()
     }
 
     fn encode_instance(&self, inst: &Instance) -> EncodedInstance {
@@ -195,7 +206,9 @@ impl Crf1dEncoder {
             let state_start = t * l;
             for attr in &item.contents {
                 let aid = attr.aid as usize;
-                if aid >= self.attr_refs.len() { continue; }
+                if aid >= self.attr_refs.len() {
+                    continue;
+                }
                 let value = attr.value;
                 for &fid in &self.attr_refs[aid].fids {
                     let dst = self.feature_dst[fid as usize] as usize;
@@ -213,7 +226,9 @@ impl Crf1dEncoder {
             let state_start = t * l;
             for attr in &item.contents {
                 let aid = attr.aid as usize;
-                if aid >= self.attr_refs.len() { continue; }
+                if aid >= self.attr_refs.len() {
+                    continue;
+                }
                 let vs = attr.value * scale;
                 for &fid in &self.attr_refs[aid].fids {
                     let dst = self.feature_dst[fid as usize] as usize;
@@ -257,7 +272,9 @@ impl Crf1dEncoder {
             let mexp_start = t * l;
             for attr in &item.contents {
                 let aid = attr.aid as usize;
-                if aid >= self.attr_refs.len() { continue; }
+                if aid >= self.attr_refs.len() {
+                    continue;
+                }
                 let value = attr.value;
                 let vw = value * weight;
                 for &fid in &self.attr_refs[aid].fids {
@@ -334,7 +351,9 @@ impl Crf1dEncoder {
 
         for inst in instances {
             let t_max = inst.items.len();
-            if t_max == 0 { continue; }
+            if t_max == 0 {
+                continue;
+            }
 
             // Set up instance
             self.ctx.set_num_items(t_max);
@@ -433,7 +452,9 @@ impl Crf1dEncoder {
 
             for attr in &item.contents {
                 let aid = attr.aid as usize;
-                if aid >= self.attr_refs.len() { continue; }
+                if aid >= self.attr_refs.len() {
+                    continue;
+                }
                 for &fid in &self.attr_refs[aid].fids {
                     let f = &self.features[fid as usize];
                     if f.dst as usize == gold_label {
@@ -474,7 +495,9 @@ impl Crf1dEncoder {
 
             for attr in &item.contents {
                 let aid = attr.aid as usize;
-                if aid >= self.attr_refs.len() { continue; }
+                if aid >= self.attr_refs.len() {
+                    continue;
+                }
                 for &fid in &self.attr_refs[aid].fids {
                     let f = &self.features[fid as usize];
                     if f.dst as usize == label {
@@ -498,12 +521,7 @@ impl Crf1dEncoder {
     }
 
     /// Enumerate features on a path using a pre-encoded instance.
-    pub fn features_on_path_encoded<F>(
-        &self,
-        inst: &EncodedInstance,
-        path: &[i32],
-        mut callback: F,
-    )
+    pub fn features_on_path_encoded<F>(&self, inst: &EncodedInstance, path: &[i32], mut callback: F)
     where
         F: FnMut(i32, f64),
     {

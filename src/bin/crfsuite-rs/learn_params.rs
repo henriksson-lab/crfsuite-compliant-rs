@@ -75,7 +75,11 @@ fn param_value_or_default<'a>(
         .iter()
         .find(|(k, _)| k == name)
         .map(|(_, v)| v.as_str())
-        .unwrap_or_else(|| find_param_spec(algorithm, name).map(|spec| spec.default).unwrap_or(""))
+        .unwrap_or_else(|| {
+            find_param_spec(algorithm, name)
+                .map(|spec| spec.default)
+                .unwrap_or("")
+        })
 }
 
 #[derive(Clone, Copy)]

@@ -1,5 +1,5 @@
-mod cli_meta;
 mod cli_dump;
+mod cli_meta;
 mod iwa;
 mod learn;
 mod learn_data;
@@ -105,13 +105,13 @@ enum Commands {
     },
 
     /// Dump a model in human-readable format
-        Dump {
-            /// Model file path
-            model: Option<String>,
+    Dump {
+        /// Model file path
+        model: Option<String>,
 
-            #[arg(hide = true)]
-            extra: Vec<String>,
-        },
+        #[arg(hide = true)]
+        extra: Vec<String>,
+    },
 
     #[command(external_subcommand)]
     External(Vec<String>),

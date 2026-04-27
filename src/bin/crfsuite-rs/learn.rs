@@ -70,17 +70,17 @@ pub fn run_learn(args: LearnArgs) -> Result<(), Box<dyn std::error::Error>> {
         }
     } else {
         train_once(
-                TrainOnce {
-                    algorithm,
-                    params: &args.params,
-                    instances: &data.instances,
-                    holdout: args.holdout,
-                    num_labels: data.num_labels,
-                    num_attrs: data.num_attrs,
-                    label_strings: &data.label_strings,
-                    attr_strings: &data.attr_strings,
-                    model_path: &args.model_path,
-                },
+            TrainOnce {
+                algorithm,
+                params: &args.params,
+                instances: &data.instances,
+                holdout: args.holdout,
+                num_labels: data.num_labels,
+                num_attrs: data.num_attrs,
+                label_strings: &data.label_strings,
+                attr_strings: &data.attr_strings,
+                model_path: &args.model_path,
+            },
             &mut log,
         )?;
     }

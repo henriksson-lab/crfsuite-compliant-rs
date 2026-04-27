@@ -31,7 +31,11 @@ pub fn train_lbfgs(
     };
 
     let orthantwise = if c1 > 0.0 {
-        Some(OrthantWise { c: c1, start: 0, end: k as i32 })
+        Some(OrthantWise {
+            c: c1,
+            start: 0,
+            end: k as i32,
+        })
     } else {
         None
     };
@@ -42,7 +46,11 @@ pub fn train_lbfgs(
         past: period,
         delta,
         max_iterations,
-        linesearch: if orthantwise.is_some() { LineSearch::BacktrackingWolfe } else { ls },
+        linesearch: if orthantwise.is_some() {
+            LineSearch::BacktrackingWolfe
+        } else {
+            ls
+        },
         max_linesearch,
         orthantwise,
         ..LbfgsParam::default()

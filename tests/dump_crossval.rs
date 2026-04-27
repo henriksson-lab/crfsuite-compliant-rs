@@ -6,12 +6,15 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn project_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .to_path_buf()
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).to_path_buf()
 }
 
-fn c_bin() -> PathBuf { project_root().join("crfsuite/frontend/.libs/crfsuite") }
-fn c_lib_path() -> PathBuf { project_root().join("crfsuite/lib/crf/.libs") }
+fn c_bin() -> PathBuf {
+    project_root().join("crfsuite/frontend/.libs/crfsuite")
+}
+fn c_lib_path() -> PathBuf {
+    project_root().join("crfsuite/lib/crf/.libs")
+}
 
 fn c_dump(model_path: &str) -> String {
     let o = Command::new(c_bin())
@@ -49,14 +52,17 @@ fn dump_matches_c_for_lbfgs_model() {
             if cl != rl {
                 panic!(
                     "Dump differs at line {}:\n  C:    {:?}\n  Rust: {:?}",
-                    i + 1, cl, rl
+                    i + 1,
+                    cl,
+                    rl
                 );
             }
         }
         if c_lines.len() != rs_lines.len() {
             panic!(
                 "Dump line count differs: C={}, Rust={}",
-                c_lines.len(), rs_lines.len()
+                c_lines.len(),
+                rs_lines.len()
             );
         }
     }

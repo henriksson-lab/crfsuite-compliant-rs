@@ -152,11 +152,7 @@ fn assert_identical(a: &str, b: &str, ctx: &str) {
 }
 
 fn assert_tag_test_output_matches(c: &str, rs: &str, ctx: &str) {
-    assert_identical(
-        &normalize_tag_elapsed(c),
-        &normalize_tag_elapsed(rs),
-        ctx,
-    );
+    assert_identical(&normalize_tag_elapsed(c), &normalize_tag_elapsed(rs), ctx);
 }
 
 fn normalize_tag_elapsed(output: &str) -> String {
@@ -210,7 +206,10 @@ fn strip_c_cli_chrome(stdout: &str) -> &str {
     // even before some failures. Rust intentionally keeps those paths quiet.
     let mut rest = stdout;
     if rest.starts_with("CRFSuite ") {
-        rest = rest.split_once("\n\n").map(|(_, tail)| tail).unwrap_or(rest);
+        rest = rest
+            .split_once("\n\n")
+            .map(|(_, tail)| tail)
+            .unwrap_or(rest);
     }
     loop {
         if rest.starts_with("Start time of the training: ") {
@@ -228,7 +227,11 @@ fn strip_c_cli_chrome(stdout: &str) -> &str {
 fn assert_same_cli_help(c: Output, rs: Output, ctx: &str) {
     assert!(c.status.success(), "C should print help for {ctx}");
     assert!(rs.status.success(), "Rust should print help for {ctx}");
-    assert_eq!(c.status.code(), rs.status.code(), "{ctx}: exit code mismatch");
+    assert_eq!(
+        c.status.code(),
+        rs.status.code(),
+        "{ctx}: exit code mismatch"
+    );
     let c_stdout = String::from_utf8(c.stdout).unwrap();
     let rs_stdout = String::from_utf8(rs.stdout).unwrap();
     let c_usage = c_bin().to_string_lossy().to_string();
@@ -727,7 +730,10 @@ fn learn_empty_training_data_matches_c_lbfgs_error_log() {
 
     let c = run_c_raw(&["learn", input.to_str().unwrap()]);
     let rs = run_rust_raw(&["learn", input.to_str().unwrap()]);
-    assert!(c.status.success(), "C empty training should exit successfully");
+    assert!(
+        c.status.success(),
+        "C empty training should exit successfully"
+    );
     assert!(
         rs.status.success(),
         "Rust empty training should exit successfully"
@@ -907,12 +913,8 @@ fn learn_help_parameters_matches_c() {
         "passive-aggressive",
         "arow",
     ] {
-        let c_help = c_stdout_without_banner(run_c_raw(&[
-            "learn",
-            "-a",
-            algorithm,
-            "--help-params",
-        ]));
+        let c_help =
+            c_stdout_without_banner(run_c_raw(&["learn", "-a", algorithm, "--help-params"]));
         let rs_help = run_rust(&["learn", "-a", algorithm, "--help-params"]);
         assert_identical(
             &c_help,
@@ -1487,10 +1489,7 @@ fn assert_online_holdout_log_matches_c(algorithm: &str, params: &[&str]) {
 #[test]
 fn learn_online_holdout_logs_match_c() {
     skip_without_c!();
-    assert_online_holdout_log_matches_c(
-        "averaged-perceptron",
-        &["max_iterations=1", "epsilon=0"],
-    );
+    assert_online_holdout_log_matches_c("averaged-perceptron", &["max_iterations=1", "epsilon=0"]);
     assert_online_holdout_log_matches_c(
         "passive-aggressive",
         &[
@@ -2267,13 +2266,7 @@ fn tag_viterbi_ties_and_marginals_match_c() {
         &["max_iterations=0"],
         Some(&c_lib_path()),
     );
-    train_iwa_with_params(
-        &rust_bin(),
-        &train,
-        &rs_model,
-        &["max_iterations=0"],
-        None,
-    );
+    train_iwa_with_params(&rust_bin(), &train, &rs_model, &["max_iterations=0"], None);
 
     let c = run_c(&[
         "tag",

@@ -35,8 +35,8 @@ pub fn load_training_data(
         let input: Box<dyn io::BufRead> = if filename == "-" {
             Box::new(BufReader::new(io::stdin()))
         } else {
-            let file =
-                File::open(filename).map_err(|_| format!("Failed to open the data set: {}", filename))?;
+            let file = File::open(filename)
+                .map_err(|_| format!("Failed to open the data set: {}", filename))?;
             Box::new(BufReader::new(file))
         };
 
