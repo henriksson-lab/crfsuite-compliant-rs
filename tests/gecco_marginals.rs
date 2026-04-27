@@ -96,6 +96,17 @@ fn library_marginals(model: &ModelReader, features: &[Vec<&str>]) -> Vec<f64> {
         .collect()
 }
 
+fn canonical_library_marginals(model: &ModelReader, features: &[Vec<&str>]) -> Vec<f64> {
+    let mut tagger = Crf1dTagger::new(model);
+    let inst = build_instance(model, features);
+    tagger.set_canonical(&inst);
+
+    let label_1 = model.to_lid("1").expect("model must have label '1'");
+    (0..features.len())
+        .map(|t| tagger.marginal_point(label_1, t as i32))
+        .collect()
+}
+
 /// Parse marginals from C/Rust CLI `-l` output.
 /// Each line looks like: `0\t0:0.999998\t1:0.000002`
 fn parse_cli_marginals(output: &str) -> Vec<f64> {
@@ -462,4 +473,21 @@ fn gecco_library_vs_cli_marginals() {
             );
         }
     }
+}
+
+#[test]
+fn gecco_canonical_marginals_are_attribute_order_independent() {
+    let Some(data) = gecco_model_bytes() else {
+        return;
+    };
+    let model = ModelReader::open(&data).unwrap();
+    let mut features = window_start_features();
+    let baseline = canonical_library_marginals(&model, &features);
+
+    for item in &mut features {
+        item.reverse();
+    }
+    let reversed = canonical_library_marginals(&model, &features);
+
+    assert_eq!(baseline, reversed);
 }

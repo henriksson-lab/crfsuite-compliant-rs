@@ -53,10 +53,31 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crfsuite-compliant-rs = { version = "0.3.0", default-features = false }
+crfsuite-compliant-rs = { version = "0.4.0", default-features = false }
 ```
 
 (Use `default-features = false` to avoid pulling in `clap` when you only need the library.)
+
+### Cargo features
+
+The default feature set includes the CLI. For library-only use, disable default features:
+
+```toml
+crfsuite-compliant-rs = { version = "0.4.0", default-features = false }
+```
+
+The optional `sse-exp` feature makes `vecexp` use the experimental CRFsuite `USE_SSE` polynomial approximation instead of the default platform `exp` implementation:
+
+```bash
+cargo install crfsuite-compliant-rs --features sse-exp
+cargo test --features sse-exp
+```
+
+For library use:
+
+```toml
+crfsuite-compliant-rs = { version = "0.4.0", default-features = false, features = ["sse-exp"] }
+```
 
 ### Training a model
 

@@ -1,7 +1,10 @@
 //! Vector math operations for CRFsuite.
 //!
-//! `vecexp` reproduces the exact SSE2 polynomial approximation from the C code
-//! so that forward-backward scores are bit-identical.
+//! `vecexp` follows the default CRFsuite C build used by python-crfsuite:
+//! unless CRFsuite is compiled with `USE_SSE`, `vecmath.h` delegates to the
+//! platform `exp` implementation. GECCO's Python reference output comes from
+//! that non-SSE path, so the Rust translation defaults to the same behavior.
+//! Enable the `sse-exp` feature to use the CRFsuite SSE2 polynomial instead.
 
 #[inline]
 pub fn veczero(x: &mut [f64]) {
@@ -86,49 +89,56 @@ pub fn vecsumlog(x: &[f64]) -> f64 {
     x.iter().map(|v| v.ln()).sum()
 }
 
-// ── vecexp: exact reproduction of the C SSE2 polynomial ─────────────────────
-
+#[cfg(feature = "sse-exp")]
 const LOG2E: f64 = std::f64::consts::LOG2_E;
+#[cfg(feature = "sse-exp")]
 const MAXLOG: f64 = 7.097_827_128_933_84e2;
+#[cfg(feature = "sse-exp")]
 const MINLOG: f64 = -7.083_964_185_322_641e2;
+#[cfg(feature = "sse-exp")]
 const C1: f64 = 6.93145751953125e-1;
+#[cfg(feature = "sse-exp")]
 const C2: f64 = 1.428_606_820_309_417_3e-6;
 
+#[cfg(feature = "sse-exp")]
 const W11: f64 = 3.5524625185478232665958141148891055719216674475023e-8;
+#[cfg(feature = "sse-exp")]
 const W10: f64 = 2.5535368519306500343384723775435166753084614063349e-7;
+#[cfg(feature = "sse-exp")]
 const W9: f64 = 2.77750562801295315877005242757916081614772210463065e-6;
+#[cfg(feature = "sse-exp")]
 const W8: f64 = 2.47868893393199945541176652007657202642495832996107e-5;
+#[cfg(feature = "sse-exp")]
 const W7: f64 = 1.98419213985637881240770890090795533564573406893163e-4;
+#[cfg(feature = "sse-exp")]
 const W6: f64 = 1.3888869684178659239014256260881685824525255547326e-3;
+#[cfg(feature = "sse-exp")]
 const W5: f64 = 8.3333337052009872221152811550156335074160546333973e-3;
+#[cfg(feature = "sse-exp")]
 const W4: f64 = 4.1666666621080810610346717440523105184720007971655e-2;
+#[cfg(feature = "sse-exp")]
 const W3: f64 = 0.166666666669960803484477734308515404418108830469798;
+#[cfg(feature = "sse-exp")]
 const W2: f64 = 0.499999999999877094481580370323249951329122224389189;
+#[cfg(feature = "sse-exp")]
 const W1: f64 = 1.0000000000000017952745258419615282194236357388884;
+#[cfg(feature = "sse-exp")]
 const W0: f64 = 0.99999999999999999566016490920259318691496540598896;
 
-/// Compute exp() for each element, using the exact same polynomial
-/// approximation as the C SSE2 code in vecmath.h.
+#[cfg(feature = "sse-exp")]
 #[inline]
 fn fast_exp(x: f64) -> f64 {
-    // Clamp
     let x = x.clamp(MINLOG, MAXLOG);
 
-    // a = x * log2(e)
     let a = x * LOG2E;
-
-    // Floor via: subtract 1.0 if negative, then truncate toward zero.
-    // This matches the SSE2 pattern: cmplt + and(1.0) + sub + cvttpd_epi32
     let p = if a < 0.0 { 1.0 } else { 0.0 };
     let a = a - p;
-    let k = a as i32; // truncate toward zero (same as _mm_cvttpd_epi32)
+    let k = a as i32;
     let p = f64::from(k);
 
-    // Cody-Waite reduction: x -= p * log(2)  split as (C1 + C2)
     let x = x - p * C1;
     let x = x - p * C2;
 
-    // Horner evaluation of degree-11 polynomial
     let mut a = W11;
     a = a * x + W10;
     a = a * x + W9;
@@ -142,14 +152,20 @@ fn fast_exp(x: f64) -> f64 {
     a = a * x + W1;
     a = a * x + W0;
 
-    // Multiply by 2^k via bit construction
-    let pow2k = f64::from_bits(((k as i64 + 1023) as u64) << 52);
+    let pow2k = f64::from_bits(((i64::from(k) + 1023) as u64) << 52);
     a * pow2k
 }
 
-/// In-place vectorized exp using the CRFsuite polynomial approximation.
-/// The input slice length should be a multiple of 4 for C compatibility,
-/// but this works for any length.
+/// In-place exp matching CRFsuite's non-`USE_SSE` `vecmath.h` path by default.
+#[cfg(not(feature = "sse-exp"))]
+pub fn vecexp(values: &mut [f64]) {
+    for v in values.iter_mut() {
+        *v = v.exp();
+    }
+}
+
+/// In-place exp matching CRFsuite's `USE_SSE` polynomial approximation.
+#[cfg(feature = "sse-exp")]
 pub fn vecexp(values: &mut [f64]) {
     for v in values.iter_mut() {
         *v = fast_exp(*v);
@@ -219,32 +235,20 @@ mod tests {
     }
 
     #[test]
-    fn test_fast_exp_zero() {
-        assert_eq!(fast_exp(0.0), W0); // polynomial at 0 = w0
+    #[cfg(not(feature = "sse-exp"))]
+    fn test_vecexp_matches_std_exp_bits() {
+        let mut values = [-1000.0f64, -10.0, -1.0, 0.0, 1.0, 10.0, 1000.0];
+        let expected: Vec<u64> = values.iter().map(|v| v.exp().to_bits()).collect();
+        vecexp(&mut values);
+
+        for (value, bits) in values.iter().zip(expected.iter()) {
+            assert_eq!(value.to_bits(), *bits);
+        }
     }
 
     #[test]
-    fn test_fast_exp_one() {
-        let result = fast_exp(1.0);
-        // Should be close to e ≈ 2.718281828...
-        assert!((result - std::f64::consts::E).abs() < 1e-12);
-    }
-
-    #[test]
-    fn test_fast_exp_clamping() {
-        // Very large → clamped to MAXLOG
-        let big = fast_exp(1000.0);
-        let maxlog_result = fast_exp(MAXLOG);
-        assert_eq!(big, maxlog_result);
-
-        // Very small → clamped to MINLOG
-        let small = fast_exp(-1000.0);
-        let minlog_result = fast_exp(MINLOG);
-        assert_eq!(small, minlog_result);
-    }
-
-    #[test]
-    fn test_fast_exp_matches_c_sse_bits() {
+    #[cfg(feature = "sse-exp")]
+    fn test_vecexp_matches_c_sse_bits() {
         let mut values = [-1000.0, MINLOG, -10.0, -1.0, 0.0, 1.0, 10.0, MAXLOG];
         let expected = [
             0x0000000000000000,
