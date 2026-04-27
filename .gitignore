@@ -5,3 +5,6 @@ test_data/bench_10k.txt
 test_data/bench_10k.txt.gz
 test_data/gecco_model.crfsuite
 test_data/gecco_iwa_window_*.txt
+crfsuite/
+BUGFINDING.md
+CLAUDE.md

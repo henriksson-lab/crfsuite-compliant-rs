@@ -29,11 +29,11 @@ fn project_root() -> PathBuf {
 }
 
 fn rust_bin() -> PathBuf {
-    if let Some(bin) = option_env!("CARGO_BIN_EXE_crfsuite-rs") {
+    if let Some(bin) = option_env!("CARGO_BIN_EXE_crfsuite-compliant-rs") {
         return PathBuf::from(bin);
     }
     let root = project_root();
-    root.join("target/debug/crfsuite-rs")
+    root.join("target/debug/crfsuite-compliant-rs")
 }
 
 fn c_bin() -> PathBuf {
@@ -61,10 +61,10 @@ fn run_rust(args: &[&str]) -> String {
     let o = Command::new(&bin)
         .args(args)
         .output()
-        .expect("spawn crfsuite-rs");
+        .expect("spawn crfsuite-compliant-rs");
     assert!(
         o.status.success(),
-        "crfsuite-rs {args:?} exit={}\n{}",
+        "crfsuite-compliant-rs {args:?} exit={}\n{}",
         o.status,
         String::from_utf8_lossy(&o.stderr)
     );
@@ -76,7 +76,7 @@ fn run_rust_raw(args: &[&str]) -> std::process::Output {
     Command::new(&bin)
         .args(args)
         .output()
-        .expect("spawn crfsuite-rs")
+        .expect("spawn crfsuite-compliant-rs")
 }
 
 /// Run the C CLI; return stdout.

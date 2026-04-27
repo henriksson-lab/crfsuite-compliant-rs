@@ -1,4 +1,4 @@
-pub const APP_NAME: &str = "crfsuite-rs";
+pub const APP_NAME: &str = "crfsuite-compliant-rs";
 pub const APP_VERSION: &str = "0.12.2";
 pub const APP_ABOUT: &str = "CRFsuite - Conditional Random Fields";
 

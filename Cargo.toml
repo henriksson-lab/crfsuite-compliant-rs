@@ -1,6 +1,6 @@
 [package]
 name = "crfsuite-compliant-rs"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 description = "Pure Rust implementation of CRFsuite (Conditional Random Fields) for labeling sequential data"
 license = "BSD-3-Clause"
@@ -29,8 +29,8 @@ name = "crfsuite_compliant_rs"
 path = "src/lib.rs"
 
 [[bin]]
-name = "crfsuite-rs"
-path = "src/bin/crfsuite-rs/main.rs"
+name = "crfsuite-compliant-rs"
+path = "src/bin/crfsuite-compliant-rs/main.rs"
 required-features = ["cli"]
 
 [features]

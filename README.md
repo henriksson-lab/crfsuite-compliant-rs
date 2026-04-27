@@ -1,4 +1,4 @@
-# crfsuite-rs
+# crfsuite-compliant-rs
 
 A pure Rust implementation of [CRFsuite](http://www.chokkan.org/software/crfsuite/) — Conditional Random Fields for labeling sequential data.
 
@@ -53,7 +53,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-crfsuite-compliant-rs = { version = "0.2.1", default-features = false }
+crfsuite-compliant-rs = { version = "0.3.0", default-features = false }
 ```
 
 (Use `default-features = false` to avoid pulling in `clap` when you only need the library.)
@@ -164,39 +164,39 @@ for (t, label_id) in labels.iter().enumerate() {
 
 ```bash
 # Train with L-BFGS (default)
-crfsuite-rs learn -a lbfgs -m model.bin train.txt
+crfsuite-compliant-rs learn -a lbfgs -m model.bin train.txt
 
 # Train with other algorithms
-crfsuite-rs learn -a l2sgd -m model.bin train.txt
-crfsuite-rs learn -a ap -m model.bin train.txt       # averaged perceptron
-crfsuite-rs learn -a pa -m model.bin train.txt       # passive-aggressive
-crfsuite-rs learn -a arow -m model.bin train.txt
+crfsuite-compliant-rs learn -a l2sgd -m model.bin train.txt
+crfsuite-compliant-rs learn -a ap -m model.bin train.txt       # averaged perceptron
+crfsuite-compliant-rs learn -a pa -m model.bin train.txt       # passive-aggressive
+crfsuite-compliant-rs learn -a arow -m model.bin train.txt
 
 # Set algorithm parameters
-crfsuite-rs learn -a lbfgs -p c2=0.1 -p max_iterations=200 -m model.bin train.txt
+crfsuite-compliant-rs learn -a lbfgs -p c2=0.1 -p max_iterations=200 -m model.bin train.txt
 ```
 
 ### Tagging
 
 ```bash
 # Basic tagging
-crfsuite-rs tag -m model.bin test.txt
+crfsuite-compliant-rs tag -m model.bin test.txt
 
 # With reference labels and evaluation
-crfsuite-rs tag -m model.bin -t test.txt
+crfsuite-compliant-rs tag -m model.bin -t test.txt
 
 # With probability scores
-crfsuite-rs tag -m model.bin -p test.txt
+crfsuite-compliant-rs tag -m model.bin -p test.txt
 
 # With marginal probabilities
-crfsuite-rs tag -m model.bin -i test.txt      # predicted label marginal
-crfsuite-rs tag -m model.bin -l test.txt      # all label marginals
+crfsuite-compliant-rs tag -m model.bin -i test.txt      # predicted label marginal
+crfsuite-compliant-rs tag -m model.bin -l test.txt      # all label marginals
 ```
 
 ### Model inspection
 
 ```bash
-crfsuite-rs dump model.bin
+crfsuite-compliant-rs dump model.bin
 ```
 
 ## Data format
@@ -220,7 +220,7 @@ LABEL3	attr1:value1
 
 These are single-run `bench.sh` timings on `test_data/bench_10k.txt`
 (8.3 MB, 125,183 lines, 10,000 sequences, ~115k items), comparing
-`target/release/crfsuite-rs` against `crfsuite/frontend/.libs/crfsuite`.
+`target/release/crfsuite-compliant-rs` against `crfsuite/frontend/.libs/crfsuite`.
 Treat them as smoke-test measurements, not a portable benchmark claim.
 
 | Task | C (original) | Rust | Result |
@@ -270,7 +270,7 @@ src/
     feature.rs       Feature extraction
     tag.rs           Tagger (inference)
   train/             Training algorithms (lbfgs, l2sgd, ap, pa, arow)
-  bin/crfsuite-rs/   CLI binary, shared CLI metadata, learn data loading/training, and C-compatible parameter metadata
+  bin/crfsuite-compliant-rs/   CLI binary, shared CLI metadata, learn data loading/training, and C-compatible parameter metadata
 tests/               Conformance tests vs original C implementation
 ```
 
@@ -290,7 +290,8 @@ The conformance tests run automatically as part of `cargo test`. Tests that need
 the original C executable skip themselves when the binary is not present at
 `crfsuite/frontend/.libs/crfsuite`.
 
-Build the bundled C implementation before running the full conformance suite:
+To run the full conformance suite, keep a local checkout of the original
+CRFsuite source at `crfsuite/` and build it first:
 
 ```bash
 (cd crfsuite && ./autogen.sh && ./configure && make)
@@ -313,19 +314,12 @@ The conformance suite verifies:
 - Parser edge cases for IWA escaping, `@weight`, CRLF input, empty fields, and C-compatible `atoi`/`atof` behavior.
 - CLI failures for selected missing files, malformed models, unknown parameters, and top-level command errors.
 
-## Compatibility
-
-- Reads and writes the CRFsuite 0.12 binary model format using explicit little-endian encoding.
-- Rust can read C models, and C can read Rust models for the covered model layout and CQDB sections.
-- Minimal deterministic L-BFGS training with `max_iterations=0` is covered by byte-for-byte model equality tests.
-- General training output is treated as functionally compatible when tag/dump output matches, because floating-point ordering and trainer details can affect byte layout.
-- The `vecexp` polynomial approximation is reproduced exactly for the covered SSE2 fixture to preserve inference consistency.
 
 ### Known deviations from C
 
 - A final non-empty IWA line without a trailing newline is handled gracefully instead of preserving C's hang/wait behavior.
 - CLI chrome is intentionally quieter in Rust. The conformance tests normalize C-only banners and training progress preambles when the semantic result is stderr, exit status, or parameter output.
-- `learn -g` and online trainer shuffles call the platform C `srand(0)`/`rand()` stream for compatibility with the bundled C build on the same platform.
+- `learn -g` and online trainer shuffles call the platform C `srand(0)`/`rand()` stream for compatibility with the local C build on the same platform.
 - Top-level help, subcommand help, and selected command errors are matched by conformance tests, while broader C banner/progress chrome remains intentionally quieter.
 
 ## License

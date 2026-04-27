@@ -30,10 +30,10 @@ fn project_root() -> PathBuf {
 }
 
 fn rust_bin() -> PathBuf {
-    if let Some(bin) = option_env!("CARGO_BIN_EXE_crfsuite-rs") {
+    if let Some(bin) = option_env!("CARGO_BIN_EXE_crfsuite-compliant-rs") {
         return PathBuf::from(bin);
     }
-    project_root().join("target/debug/crfsuite-rs")
+    project_root().join("target/debug/crfsuite-compliant-rs")
 }
 
 fn test_data(name: &str) -> PathBuf {

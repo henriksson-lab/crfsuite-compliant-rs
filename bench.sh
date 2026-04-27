@@ -1,10 +1,10 @@
 #!/bin/bash
-# Performance comparison: Rust crfsuite-rs vs original C crfsuite
+# Performance comparison: Rust crfsuite-compliant-rs vs original C crfsuite
 set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 C_BIN="$ROOT/crfsuite/frontend/.libs/crfsuite"
-RS_BIN="$ROOT/target/release/crfsuite-rs"
+RS_BIN="$ROOT/target/release/crfsuite-compliant-rs"
 export LD_LIBRARY_PATH="$ROOT/crfsuite/lib/crf/.libs:$LD_LIBRARY_PATH"
 
 DATA="$ROOT/test_data/bench_10k.txt"
